@@ -1,0 +1,226 @@
+@import "tailwindcss";
+
+/* ── Base resets ── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Select styling ── */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6478' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px !important;
+}
+
+/* ── Theme variables are set by presets (src/themes/presets.ts) ── */
+/* body.dark / body.light classes are applied for scrollbar & CM6 panel styling */
+
+/* ── Badge styles ── */
+.badge-rewrite-dark {
+  background: #5d4037;
+  color: #ffcc80;
+}
+.badge-rewrite-light {
+  background: #fff3e0;
+  color: #e65100;
+}
+.badge-delete-dark {
+  background: #b71c1c;
+  color: #ffcdd2;
+}
+.badge-delete-light {
+  background: #ffebee;
+  color: #b71c1c;
+}
+.badge-move-dark {
+  background: #1565c0;
+  color: #bbdefb;
+}
+.badge-move-light {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+.badge-flag-dark {
+  background: #6a1b9a;
+  color: #e1bee7;
+}
+.badge-flag-light {
+  background: #f3e5f5;
+  color: #6a1b9a;
+}
+
+.badge-p1-dark {
+  background: #c62828;
+  color: #ffcdd2;
+}
+.badge-p1-light {
+  background: #ffcdd2;
+  color: #b71c1c;
+}
+.badge-p2-dark {
+  background: #e65100;
+  color: #ffe0b2;
+}
+.badge-p2-light {
+  background: #ffe0b2;
+  color: #e65100;
+}
+.badge-p3-dark {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+.badge-p3-light {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+}
+
+.badge-dimension {
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 9px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--btn-radius, 4px);
+  letter-spacing: 0.03em;
+}
+
+/* ── CodeMirror overrides ── */
+.cm-editor {
+  height: 100%;
+}
+
+.cm-scroller {
+  font-family: "Courier Prime", "Courier New", Courier, monospace !important;
+}
+
+/* ── CM6 search panel dark mode ── */
+body.dark .cm-panels {
+  background: var(--bg-secondary, #111);
+  color: var(--text-primary, #e0e0e0);
+  border-color: var(--border-color, #333);
+}
+
+body.dark .cm-panels input,
+body.dark .cm-panels button {
+  background: var(--bg-primary, #1a1a1a);
+  color: var(--text-primary, #e0e0e0);
+  border: 1px solid var(--border-color, #333);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
+
+body.light .cm-panels {
+  background: var(--bg-tertiary, #e8e8e8);
+  color: var(--text-primary, #222);
+  border-color: var(--border-color, #ccc);
+}
+
+body.light .cm-panels input,
+body.light .cm-panels button {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 11px;
+}
+
+/* ── Inline mark decoration styles ── */
+.fountain-bold {
+  font-weight: bold;
+}
+
+.fountain-italic {
+  font-style: italic;
+}
+
+.fountain-underline {
+  text-decoration: underline;
+}
+
+.fountain-inline-note {
+  opacity: 0.5;
+  font-style: italic;
+}
+
+/* ── Scrollbar styling ── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+body.dark ::-webkit-scrollbar-track {
+  background: var(--bg-primary, #0a0a0a);
+}
+
+body.dark ::-webkit-scrollbar-thumb {
+  background: var(--bg-hover, #2a2a2a);
+  border-radius: 4px;
+}
+
+body.dark ::-webkit-scrollbar-thumb:hover {
+  background: var(--border-light, #3a3a3a);
+}
+
+body.light ::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+body.light ::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 4px;
+}
+
+body.light ::-webkit-scrollbar-thumb:hover {
+  background: #bbb;
+}
+
+/* ── Print ── */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .cm-editor {
+    font-size: 12pt;
+  }
+
+  /* Hide non-editor chrome */
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* ── Annotation highlights ── */
+.cm-annotation-mark {
+  background: rgba(255, 193, 7, 0.2);
+  border-bottom: 2px solid rgba(255, 193, 7, 0.5);
+  border-radius: 2px;
+}
+
+body.light .cm-annotation-mark {
+  background: rgba(255, 152, 0, 0.15);
+  border-bottom-color: rgba(255, 152, 0, 0.4);
+}
+
+/* ── Transitions for panel show/hide ── */
+.panel-transition {
+  transition: width 0.2s ease, opacity 0.2s ease;
+}
