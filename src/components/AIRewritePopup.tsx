@@ -13,10 +13,12 @@ export function AIRewritePopup() {
     provider,
     model,
     apiKeys,
+    currentProfile,
     setLoading,
     setSuggestions,
     setError,
     clearRewrite,
+    comparisonEnabled,
   } = useAIStore()
   const { viewRef } = useEditorStore()
   const [customText, setCustomText] = useState('')
@@ -41,13 +43,14 @@ export function AIRewritePopup() {
         provider,
         model,
         apiKey,
+        currentProfile,
       )
       setSuggestions(result.suggestions)
       setCustomText(rewriteSelection.text)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     }
-  }, [rewriteSelection, apiKey, provider, model, instruction, setLoading, setSuggestions, setError])
+  }, [rewriteSelection, apiKey, provider, model, instruction, currentProfile, setLoading, setSuggestions, setError])
 
   useEffect(() => {
     if (rewriteSelection && suggestions.length === 0 && !isLoading && !error) {
@@ -200,6 +203,43 @@ export function AIRewritePopup() {
           />
         </div>
 
+        {/* No profile nudge */}
+        {!currentProfile && !isLoading && suggestions.length === 0 && (
+          <div
+            style={{
+              padding: '10px 20px',
+              borderBottom: '1px solid var(--border-color)',
+              fontSize: '10px',
+              fontFamily: "'Inter', sans-serif",
+              color: 'var(--text-muted)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+            }}
+          >
+            No voice profile. Rewrites may not match your script's tone.
+            <button
+              style={{
+                padding: '2px 8px',
+                fontSize: '10px',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 600,
+                borderRadius: 'var(--btn-radius)',
+                cursor: 'pointer',
+                background: 'var(--accent-cyan-dim)',
+                border: '1px solid var(--accent-cyan)',
+                color: 'var(--accent-cyan)',
+              }}
+              onClick={() => {
+                clearRewrite()
+              }}
+              type="button"
+            >
+              Analyze
+            </button>
+          </div>
+        )}
+
         {/* Loading state */}
         {isLoading && (
           <div
@@ -329,6 +369,28 @@ export function AIRewritePopup() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Compare with another model */}
+        {comparisonEnabled && suggestions.length > 0 && (
+          <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border-color)' }}>
+            <button
+              style={{
+                width: '100%', padding: '8px 12px', fontSize: '10px',
+                fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
+                borderRadius: 'var(--card-radius)', cursor: 'pointer',
+                background: 'var(--bg-hover)', border: '1px solid var(--border-light)',
+                color: 'var(--text-primary)', transition: 'all 0.15s ease',
+              }}
+              onClick={() => {
+                // Switch to comparison mode — DualRewritePopup will pick up rewriteSelection
+                useAIStore.getState().setSuggestions([])
+              }}
+              type="button"
+            >
+              Compare with another model
+            </button>
           </div>
         )}
 

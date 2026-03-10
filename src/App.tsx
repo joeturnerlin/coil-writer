@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AIRewritePopup } from './components/AIRewritePopup'
+import { DualRewritePopup } from './components/DualRewritePopup'
+import { AnalysisPanel } from './components/AnalysisPanel'
 import { AnnotationsPanel } from './components/AnnotationsPanel'
 import { ConversionWarnings } from './components/ConversionWarnings'
 import { EditorPanel } from './components/EditorPanel'
@@ -108,6 +110,12 @@ export function App() {
 
       {/* AI Rewrite popup */}
       <AIRewritePopup />
+
+      {/* Dual rewrite comparison popup */}
+      <DualRewritePopup />
+
+      {/* Analysis panel */}
+      <AnalysisPanel />
 
       {/* Focus mode escape hint */}
       {focusMode && (

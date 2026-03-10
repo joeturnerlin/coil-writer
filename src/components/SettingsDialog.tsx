@@ -10,7 +10,12 @@ interface SettingsDialogProps {
 }
 
 export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
-  const { provider, model, apiKeys, setProvider, setModel, setApiKey } = useAIStore()
+  const {
+    provider, model, apiKeys, setProvider, setModel, setApiKey,
+    comparisonEnabled, comparisonProviderA, comparisonModelA,
+    comparisonProviderB, comparisonModelB,
+    setComparisonEnabled, setComparisonModels,
+  } = useAIStore()
   const [showKey, setShowKey] = useState(false)
 
   if (!open) return null
@@ -177,6 +182,65 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                 ? 'Works directly from browser. No proxy needed.'
                 : 'Requires dev server proxy (works in npm run dev).'}
             </p>
+          </div>
+        </div>
+
+        {/* Comparison Mode */}
+        <div style={{ padding: '0 20px 20px' }}>
+          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+            <label style={labelStyle}>Model Comparison</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+              <input
+                type="checkbox"
+                checked={comparisonEnabled}
+                onChange={(e) => setComparisonEnabled(e.target.checked)}
+                style={{ accentColor: 'var(--accent-cyan)' }}
+              />
+              <span style={{ fontSize: '11px', color: 'var(--text-secondary)', fontFamily: "'Inter', sans-serif" }}>
+                Enable side-by-side model comparison
+              </span>
+            </div>
+
+            {comparisonEnabled && (
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ ...labelStyle, fontSize: '9px', marginBottom: '4px', display: 'block' }}>Model A</label>
+                  <select
+                    style={{ ...inputStyle, fontSize: '11px' }}
+                    value={`${comparisonProviderA}:${comparisonModelA}`}
+                    onChange={(e) => {
+                      const [prov, ...rest] = e.target.value.split(':')
+                      setComparisonModels(
+                        prov as AIProvider, rest.join(':'),
+                        comparisonProviderB, comparisonModelB
+                      )
+                    }}
+                  >
+                    {AVAILABLE_MODELS.map(m => (
+                      <option key={m.id} value={`${m.provider}:${m.id}`}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ ...labelStyle, fontSize: '9px', marginBottom: '4px', display: 'block' }}>Model B</label>
+                  <select
+                    style={{ ...inputStyle, fontSize: '11px' }}
+                    value={`${comparisonProviderB}:${comparisonModelB}`}
+                    onChange={(e) => {
+                      const [prov, ...rest] = e.target.value.split(':')
+                      setComparisonModels(
+                        comparisonProviderA, comparisonModelA,
+                        prov as AIProvider, rest.join(':')
+                      )
+                    }}
+                  >
+                    {AVAILABLE_MODELS.map(m => (
+                      <option key={m.id} value={`${m.provider}:${m.id}`}>{m.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

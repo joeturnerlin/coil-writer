@@ -15,6 +15,7 @@ interface RewriteRequest {
   provider: 'google' | 'anthropic' | 'openai'
   model: string
   apiKey?: string // Optional — server key used for Gemini if omitted
+  systemPromptOverride?: string // Optional — profile-aware system prompt from client
 }
 
 export default async function handler(req: Request) {
@@ -39,13 +40,13 @@ export default async function handler(req: Request) {
     return new Response('Invalid JSON', { status: 400 })
   }
 
-  const { selectedText, surroundingContext, instruction, provider, model } = body
+  const { selectedText, surroundingContext, instruction, provider, model, systemPromptOverride } = body
 
   if (!selectedText || !model || !provider) {
     return new Response('Missing required fields: selectedText, model, provider', { status: 400 })
   }
 
-  const systemPrompt = `You are a professional screenplay editor. You rewrite selected text from Fountain-format screenplays.
+  const systemPrompt = systemPromptOverride || `You are a professional screenplay editor. You rewrite selected text from Fountain-format screenplays.
 
 Rules:
 - Return exactly 2 alternative rewrites of the selected text

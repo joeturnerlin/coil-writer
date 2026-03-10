@@ -8,6 +8,9 @@
  * In Tauri (Phase 3), all calls go through the Rust backend.
  */
 
+import type { VoiceProfile } from './voice-profile'
+import { buildCompactProfile, shouldInjectProfile } from './voice-profile'
+
 export type AIProvider = 'anthropic' | 'openai' | 'google'
 
 export interface AIModel {
@@ -49,13 +52,14 @@ export async function requestRewrite(
   provider: AIProvider,
   model: string,
   apiKey: string,
+  profile?: VoiceProfile | null,
 ): Promise<RewriteResponse> {
   // In production, use the serverless proxy for all providers
   if (import.meta.env.PROD) {
-    return callServerProxy(selectedText, surroundingContext, instruction, provider, model, apiKey)
+    return callServerProxy(selectedText, surroundingContext, instruction, provider, model, apiKey, profile ?? null)
   }
 
-  const systemPrompt = buildSystemPrompt()
+  const systemPrompt = buildSystemPrompt(profile ?? null, selectedText, surroundingContext)
   const userPrompt = buildUserPrompt(selectedText, surroundingContext, instruction)
 
   if (provider === 'anthropic') {
@@ -67,8 +71,8 @@ export async function requestRewrite(
   }
 }
 
-function buildSystemPrompt(): string {
-  return `You are a professional screenplay editor. You rewrite selected text from Fountain-format screenplays.
+function buildSystemPrompt(profile: VoiceProfile | null, selectedText: string, context: string): string {
+  const base = `You are a professional screenplay editor. You rewrite selected text from Fountain-format screenplays.
 
 Rules:
 - Return exactly 2 alternative rewrites of the selected text
@@ -79,6 +83,51 @@ Rules:
 
 Respond in this exact JSON format:
 {"suggestions": [{"text": "rewrite 1", "reasoning": "brief explanation"}, {"text": "rewrite 2", "reasoning": "brief explanation"}]}`
+
+  if (!profile || !shouldInjectProfile(selectedText, context)) {
+    return base
+  }
+
+  const compactProfile = buildCompactProfile(profile, selectedText, context)
+  if (!compactProfile) return base
+
+  // Find active characters for forbidden pattern injection
+  const combinedText = selectedText + ' ' + context
+  const activeChars = profile.characters.filter((c) => {
+    const regex = new RegExp(`\\b${c.name}\\b`, 'i')
+    return regex.test(combinedText)
+  })
+
+  // Build FORBIDDEN block (highest priority — injected first)
+  const forbiddenBlock = activeChars
+    .filter((c) => c.forbidden_patterns.length > 0)
+    .map((c) => {
+      const patterns = c.forbidden_patterns.map((f) => `  - ${f.pattern}`).join('\n')
+      return `${c.name} NEVER:\n${patterns}`
+    })
+    .join('\n')
+
+  const profileSection = forbiddenBlock
+    ? `
+
+== HARD CONSTRAINTS (violations are failures) ==
+
+${forbiddenBlock}
+
+== VOICE CONTEXT ==
+
+${compactProfile}
+
+== ANTI-STILTING DIRECTIVE ==
+
+These voice constraints describe natural tendencies, not rigid rules. The rewrite should read as fluid, natural dialogue — not as a checklist exercise. If following a constraint would produce awkward phrasing, prioritize naturalism. The FORBIDDEN patterns above are the only hard rules.`
+    : `
+
+== VOICE CONTEXT ==
+
+${compactProfile}`
+
+  return base + profileSection
 }
 
 function buildUserPrompt(selectedText: string, surroundingContext: string, instruction: string): string {
@@ -103,6 +152,7 @@ async function callServerProxy(
   provider: AIProvider,
   model: string,
   apiKey: string,
+  profile: VoiceProfile | null,
 ): Promise<RewriteResponse> {
   const res = await fetch('/api/rewrite', {
     method: 'POST',
@@ -115,6 +165,7 @@ async function callServerProxy(
       model,
       // For Gemini, omit key so server uses its own. For others, pass user's key.
       apiKey: provider === 'google' ? undefined : apiKey,
+      systemPromptOverride: profile ? buildSystemPrompt(profile, selectedText, surroundingContext) : undefined,
     }),
   })
 
