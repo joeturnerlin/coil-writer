@@ -163,8 +163,8 @@ async function callServerProxy(
       instruction,
       provider,
       model,
-      // For Gemini, omit key so server uses its own. For others, pass user's key.
-      apiKey: provider === 'google' ? undefined : apiKey,
+      // Server uses its own env keys for all providers. Pass user key as override only if set.
+      apiKey: apiKey || undefined,
       systemPromptOverride: profile ? buildSystemPrompt(profile, selectedText, surroundingContext) : undefined,
     }),
   })

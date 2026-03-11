@@ -121,9 +121,10 @@ async function proxyGemini(system: string, user: string, model: string, clientKe
   })
 }
 
-async function proxyAnthropic(system: string, user: string, model: string, apiKey?: string) {
+async function proxyAnthropic(system: string, user: string, model: string, clientKey?: string) {
+  const apiKey = clientKey || process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
-    return new Response('Anthropic requires an API key — add yours in Settings', { status: 400 })
+    return new Response('No Anthropic API key configured', { status: 500 })
   }
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -155,9 +156,10 @@ async function proxyAnthropic(system: string, user: string, model: string, apiKe
   })
 }
 
-async function proxyOpenAI(system: string, user: string, model: string, apiKey?: string) {
+async function proxyOpenAI(system: string, user: string, model: string, clientKey?: string) {
+  const apiKey = clientKey || process.env.OPENAI_API_KEY
   if (!apiKey) {
-    return new Response('OpenAI requires an API key — add yours in Settings', { status: 400 })
+    return new Response('No OpenAI API key configured', { status: 500 })
   }
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
