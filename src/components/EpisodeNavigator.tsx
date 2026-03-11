@@ -60,7 +60,10 @@ export function EpisodeNavigator() {
     if (!view || items.length === 0) return
 
     const updateFromScroll = () => {
-      const topPos = view.viewport.from
+      // Use lineBlockAtHeight to get the document position at the top of the visible area
+      const scrollTop = view.scrollDOM.scrollTop
+      const topBlock = view.lineBlockAtHeight(scrollTop)
+      const topPos = topBlock.from
       if (isSceneMode) {
         let found = false
         for (let i = scenes.length - 1; i >= 0; i--) {
@@ -229,7 +232,10 @@ export function EpisodeNavigator() {
                 transition: 'background 0.1s ease',
                 fontFamily: 'inherit',
               }}
-              onClick={() => scrollToPosition(ep.startPos)}
+              onClick={() => {
+                scrollToPosition(ep.startPos)
+                setActiveEpisode(ep.number)
+              }}
               type="button"
             >
               <div>
