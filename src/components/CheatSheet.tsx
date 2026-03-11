@@ -169,12 +169,17 @@ function CheatSheetPanel({ onClose }: { onClose: () => void }) {
           <Shortcut keys="Cmd+E" desc="Toggle Edit / Annotate mode" />
           <Shortcut keys="Cmd+Shift+F" desc="Toggle focus mode" />
           <Shortcut keys="Escape" desc="Exit focus mode" />
-          <Shortcut keys="Cmd+=" desc="Zoom in" />
+          <Shortcut keys="Cmd+=" desc="Zoom in (scales text + margins proportionally)" />
           <Shortcut keys="Cmd+-" desc="Zoom out" />
-          <Shortcut keys="Cmd+0" desc="Reset zoom" />
+          <Shortcut keys="Cmd+0" desc="Reset zoom to 100% (12pt Courier Prime)" />
           <Shortcut keys="Cmd+Z" desc="Undo" />
           <Shortcut keys="Cmd+Shift+Z" desc="Redo" />
           <Shortcut keys="Cmd+F" desc="Find in document" />
+        </Section>
+
+        <Section title="Page Format">
+          <Desc text="Industry standard: 12pt Courier Prime, ~60 characters per line. Margins match standard screenplay format (character at 3.7&quot;, dialogue at 2.5&quot;–6.5&quot;)." />
+          <Desc text="Zoom scales everything proportionally — text, margins, and page width. Line wrapping stays constant at any zoom level." />
         </Section>
 
         <Section title="AI Rewrite">

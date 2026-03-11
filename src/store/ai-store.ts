@@ -70,12 +70,12 @@ export const useAIStore = create<AIState>()(
   persist(
     (set) => ({
       provider: 'google',
-      model: 'gemini-2.5-pro-preview-05-06',
+      model: 'gemini-2.5-pro',
       apiKeys: { anthropic: '', openai: '', google: '' },
 
       comparisonEnabled: false,
       comparisonProviderA: 'google',
-      comparisonModelA: 'gemini-2.5-pro-preview-05-06',
+      comparisonModelA: 'gemini-2.5-pro',
       comparisonProviderB: 'anthropic',
       comparisonModelB: 'claude-sonnet-4-20250514',
       modelPreferences: {},

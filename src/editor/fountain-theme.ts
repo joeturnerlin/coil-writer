@@ -1,6 +1,14 @@
 import { EditorView } from '@codemirror/view'
 
 /**
+ * Zoom-scaled px helper.
+ * All layout dimensions use this so zoom scales everything proportionally
+ * (page width, margins, spacing) — not just font size.
+ * The --zoom-scale CSS variable is set by EditorPanel's zoom effect.
+ */
+const zs = (px: number) => `calc(${px}px * var(--zoom-scale, 1))`
+
+/**
  * Base theme shared by dark and light modes.
  * Sets the font family, line height, and general editor chrome.
  */
@@ -11,9 +19,9 @@ export const fountainBaseTheme = EditorView.baseTheme({
     lineHeight: '1.6',
   },
   '.cm-content': {
-    maxWidth: '680px',
+    maxWidth: zs(680),
     margin: '0 auto',
-    padding: '40px 20px 60px',
+    padding: `${zs(40)} ${zs(20)} ${zs(60)}`,
     caretColor: 'var(--caret-color)',
   },
   '.cm-gutters': {
@@ -40,37 +48,37 @@ export const fountainBaseTheme = EditorView.baseTheme({
   '.fountain-scene-heading': {
     fontWeight: 'bold',
     textTransform: 'uppercase',
-    paddingBottom: '4px',
+    paddingBottom: zs(4),
   },
   '.fountain-character': {
-    paddingLeft: '250px',
+    paddingLeft: zs(250),
     textTransform: 'uppercase',
   },
   '.fountain-parenthetical': {
-    paddingLeft: '182px',
-    paddingRight: '216px',
+    paddingLeft: zs(182),
+    paddingRight: zs(216),
     fontStyle: 'italic',
   },
   '.fountain-dialogue': {
-    paddingLeft: '114px',
-    paddingRight: '170px',
+    paddingLeft: zs(114),
+    paddingRight: zs(170),
   },
   '.fountain-transition': {
     textAlign: 'right',
     textTransform: 'uppercase',
   },
   '.fountain-episode-boundary': {
-    paddingBottom: '24px',
+    paddingBottom: zs(24),
     borderBottom: '1px solid var(--border-color)',
     fontFamily: "'Orbitron', monospace",
-    fontSize: '10px',
-    letterSpacing: '3px',
+    fontSize: zs(10),
+    letterSpacing: zs(3),
     textTransform: 'uppercase',
   },
   '.fountain-killbox-section': {
-    paddingBottom: '8px',
+    paddingBottom: zs(8),
     fontFamily: "'JetBrains Mono', monospace",
-    fontSize: '11px',
+    fontSize: zs(11),
     fontWeight: '400',
     letterSpacing: '0',
     textTransform: 'none',
@@ -82,16 +90,16 @@ export const fountainBaseTheme = EditorView.baseTheme({
 
   // Block-start: first element after a blank line gets top spacing
   '.fountain-block-start': {
-    paddingTop: '12px',
+    paddingTop: zs(12),
   },
   '.fountain-scene-heading.fountain-block-start': {
-    paddingTop: '24px',
+    paddingTop: zs(24),
   },
   '.fountain-character.fountain-block-start': {
-    paddingTop: '16px',
+    paddingTop: zs(16),
   },
   '.fountain-episode-boundary.fountain-block-start': {
-    paddingTop: '40px',
+    paddingTop: zs(40),
   },
   '.fountain-page-break': {
     fontSize: '0',
@@ -109,28 +117,28 @@ export const fountainBaseTheme = EditorView.baseTheme({
     textAlign: 'center',
   },
   '.fountain-title-page-key': {
-    paddingTop: '16px',
+    paddingTop: zs(16),
     paddingBottom: '0',
     fontWeight: 'bold',
   },
   '.fountain-title-page-value': {
-    paddingTop: '2px',
-    paddingBottom: '20px',
+    paddingTop: zs(2),
+    paddingBottom: zs(20),
   },
   '.fountain-dual-character': {
-    paddingLeft: '380px',
+    paddingLeft: zs(380),
     textTransform: 'uppercase',
     paddingTop: '0',
     marginTop: '-3.2em',
   },
   '.fountain-dual-dialogue': {
-    paddingLeft: '360px',
-    paddingRight: '10px',
+    paddingLeft: zs(360),
+    paddingRight: zs(10),
     marginTop: '-1.6em',
   },
   '.fountain-lyric': {
-    paddingLeft: '114px',
-    paddingRight: '170px',
+    paddingLeft: zs(114),
+    paddingRight: zs(170),
     fontStyle: 'italic',
   },
   '.fountain-note': {

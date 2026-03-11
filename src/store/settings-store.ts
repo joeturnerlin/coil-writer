@@ -37,8 +37,8 @@ export const useSettingsStore = create<SettingsState>()(
     (set) => ({
       preset: 'recoil',
       theme: 'dark',
-      fontSize: 18,
-      zoomLevel: 120,
+      fontSize: 16,
+      zoomLevel: 100,
       showEpisodeNav: true,
       editorMode: 'edit' as const,
       showAnnotations: false,
@@ -59,7 +59,7 @@ export const useSettingsStore = create<SettingsState>()(
       setFontSize: (fontSize) => set({ fontSize: Math.max(10, Math.min(24, fontSize)) }),
       zoomIn: () => set((s) => ({ zoomLevel: Math.min(200, s.zoomLevel + 10) })),
       zoomOut: () => set((s) => ({ zoomLevel: Math.max(70, s.zoomLevel - 10) })),
-      resetZoom: () => set({ zoomLevel: 120 }),
+      resetZoom: () => set({ zoomLevel: 100 }),
       toggleEpisodeNav: () => set((s) => ({ showEpisodeNav: !s.showEpisodeNav })),
       setEditorMode: (editorMode) =>
         set({
@@ -70,6 +70,15 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'coil-settings-v2',
+      version: 1,
+      migrate: (persisted, version) => {
+        if (version === 0) {
+          // Migrate to 12pt Courier Prime (industry standard)
+          const state = persisted as Record<string, unknown>
+          return { ...state, fontSize: 16, zoomLevel: 100 }
+        }
+        return persisted as SettingsState
+      },
       onRehydrateStorage: () => {
         // Apply the persisted preset on load
         return (state?: SettingsState) => {

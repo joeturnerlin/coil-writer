@@ -194,11 +194,15 @@ export function EditorPanel(_props: EditorPanelProps) {
     }
   }, [editingAnnotation, viewRef])
 
-  // Apply zoom via CM6 font size compartment (CSS zoom breaks CM6 coordinate math)
+  // Apply zoom: font size via CM6 compartment (triggers line-height recalc),
+  // layout scale via CSS variable (margins, maxWidth, spacing scale proportionally
+  // so line wrapping stays constant across zoom levels — true magnification).
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
-    const effectiveSize = Math.round(fontSize * (zoomLevel / 100))
+    const zoomFactor = zoomLevel / 100
+    const effectiveSize = Math.round(fontSize * zoomFactor)
+    view.dom.style.setProperty('--zoom-scale', String(zoomFactor))
     view.dispatch({
       effects: fontSizeCompartment.reconfigure(
         EditorView.theme({

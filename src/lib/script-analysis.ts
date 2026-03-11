@@ -94,7 +94,7 @@ function parseProfileResponse(text: string, sourceHash: string, modelId: string)
 export async function analyzeScript(
   scriptContent: string,
   apiKey: string,
-  model: string = 'gemini-2.5-pro-preview-05-06',
+  model: string = 'gemini-2.5-pro',
   signal?: AbortSignal,
 ): Promise<VoiceProfile> {
   const sourceHash = await hashScript(scriptContent)
