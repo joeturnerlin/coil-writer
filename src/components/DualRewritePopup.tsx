@@ -1,4 +1,4 @@
-import { Check, Loader2, RefreshCw, X } from 'lucide-react'
+import { Check, Loader2, Play, RefreshCw, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { requestRewrite, type RewriteSuggestion } from '../lib/ai-provider'
 import { useAIStore } from '../store/ai-store'
@@ -30,61 +30,54 @@ export function DualRewritePopup() {
   const [instruction, setInstruction] = useState('')
   const [showAll, setShowAll] = useState(false)
 
+  // Clear instruction when modal opens with new selection
+  useEffect(() => {
+    if (rewriteSelection) {
+      setInstruction('')
+      setShowAll(false)
+    }
+  }, [rewriteSelection])
+
   const modelAName = comparisonModelA.split('-').slice(0, 2).join(' ')
   const modelBName = comparisonModelB.split('-').slice(0, 2).join(' ')
 
   const triggerComparison = useCallback(async () => {
     if (!rewriteSelection) return
 
-    const keyA = apiKeys[comparisonProviderA]
-    const keyB = apiKeys[comparisonProviderB]
+    const keyA = apiKeys[comparisonProviderA] || ''
+    const keyB = apiKeys[comparisonProviderB] || ''
 
-    // Fire both in parallel
-    if (keyA) {
-      setComparisonLoadingA(true)
-      requestRewrite(
-        rewriteSelection.text,
-        rewriteSelection.context,
-        instruction || 'Rewrite this to be more compelling and vivid.',
-        comparisonProviderA,
-        comparisonModelA,
-        keyA,
-        currentProfile,
-      )
-        .then((r) => setComparisonResultsA(r.suggestions, null))
-        .catch((e) => setComparisonResultsA(null, e instanceof Error ? e.message : 'Failed'))
-    } else {
-      setComparisonResultsA(null, `No API key for ${comparisonProviderA}`)
-    }
+    // Fire both in parallel — server has its own env var keys as fallback
+    setComparisonLoadingA(true)
+    requestRewrite(
+      rewriteSelection.text,
+      rewriteSelection.context,
+      instruction || 'Rewrite this to be more compelling and vivid.',
+      comparisonProviderA,
+      comparisonModelA,
+      keyA,
+      currentProfile,
+    )
+      .then((r) => setComparisonResultsA(r.suggestions, null))
+      .catch((e) => setComparisonResultsA(null, e instanceof Error ? e.message : 'Failed'))
 
-    if (keyB) {
-      setComparisonLoadingB(true)
-      requestRewrite(
-        rewriteSelection.text,
-        rewriteSelection.context,
-        instruction || 'Rewrite this to be more compelling and vivid.',
-        comparisonProviderB,
-        comparisonModelB,
-        keyB,
-        currentProfile,
-      )
-        .then((r) => setComparisonResultsB(r.suggestions, null))
-        .catch((e) => setComparisonResultsB(null, e instanceof Error ? e.message : 'Failed'))
-    } else {
-      setComparisonResultsB(null, `No API key for ${comparisonProviderB}`)
-    }
+    setComparisonLoadingB(true)
+    requestRewrite(
+      rewriteSelection.text,
+      rewriteSelection.context,
+      instruction || 'Rewrite this to be more compelling and vivid.',
+      comparisonProviderB,
+      comparisonModelB,
+      keyB,
+      currentProfile,
+    )
+      .then((r) => setComparisonResultsB(r.suggestions, null))
+      .catch((e) => setComparisonResultsB(null, e instanceof Error ? e.message : 'Failed'))
   }, [
     rewriteSelection, instruction, apiKeys, currentProfile,
     comparisonProviderA, comparisonModelA, comparisonProviderB, comparisonModelB,
     setComparisonLoadingA, setComparisonLoadingB, setComparisonResultsA, setComparisonResultsB,
   ])
-
-  // Auto-trigger on mount
-  useEffect(() => {
-    if (rewriteSelection && !comparisonSuggestionsA && !comparisonSuggestionsB && !comparisonLoadingA && !comparisonLoadingB) {
-      triggerComparison()
-    }
-  }, [rewriteSelection]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -198,11 +191,11 @@ export function DualRewritePopup() {
           </div>
         </div>
 
-        {/* Instruction */}
-        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-color)' }}>
+        {/* Instruction + Generate */}
+        <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '8px', alignItems: 'center' }}>
           <input
             style={{
-              width: '100%', fontSize: '11px', fontFamily: "'Inter', sans-serif",
+              flex: 1, fontSize: '11px', fontFamily: "'Inter', sans-serif",
               padding: '8px 12px', borderRadius: 'var(--card-radius)', background: 'var(--bg-primary)',
               border: '1px solid var(--border-color)', color: 'var(--text-primary)',
             }}
@@ -210,7 +203,22 @@ export function DualRewritePopup() {
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); triggerComparison() } }}
+            autoFocus
           />
+          <button
+            style={{
+              display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 14px',
+              fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
+              textTransform: 'uppercase', letterSpacing: '0.05em',
+              borderRadius: 'var(--btn-radius)', cursor: 'pointer',
+              background: 'var(--accent-cyan)', border: 'none', color: 'var(--bg-primary)',
+            }}
+            onClick={triggerComparison}
+            disabled={comparisonLoadingA || comparisonLoadingB}
+            type="button"
+          >
+            <Play size={10} /> Generate
+          </button>
         </div>
 
         {/* Comparison grid */}

@@ -190,7 +190,7 @@ async function callAnthropic(system: string, user: string, model: string, apiKey
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: 2048,
       system,
       messages: [{ role: 'user', content: user }],
     }),
@@ -220,7 +220,7 @@ async function callOpenAI(system: string, user: string, model: string, apiKey: s
         { role: 'system', content: system },
         { role: 'user', content: user },
       ],
-      max_tokens: 1024,
+      max_tokens: 2048,
     }),
   })
 
@@ -245,7 +245,7 @@ async function callGemini(system: string, user: string, model: string, apiKey: s
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ parts: [{ text: user }] }],
         generationConfig: {
-          maxOutputTokens: 1024,
+          maxOutputTokens: 2048,
           responseMimeType: 'application/json',
         },
       }),

@@ -25,14 +25,11 @@ export function AIRewritePopup() {
   const [instruction, setInstruction] = useState('')
   const popupRef = useRef<HTMLDivElement>(null)
 
-  const apiKey = apiKeys[provider]
+  const apiKey = apiKeys[provider] || ''
 
   // Auto-trigger rewrite on mount
   const triggerRewrite = useCallback(async () => {
-    if (!rewriteSelection || !apiKey) {
-      if (!apiKey) setError('No API key configured. Open Settings to add one.')
-      return
-    }
+    if (!rewriteSelection) return
 
     setLoading(true)
     try {
@@ -67,7 +64,8 @@ export function AIRewritePopup() {
     return () => window.removeEventListener('keydown', handler)
   }, [clearRewrite])
 
-  if (!rewriteSelection) return null
+  // Don't render when comparison mode is active — DualRewritePopup handles it
+  if (!rewriteSelection || comparisonEnabled) return null
 
   const handleAccept = (text: string) => {
     const view = viewRef?.current

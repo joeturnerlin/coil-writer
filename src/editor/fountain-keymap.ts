@@ -106,15 +106,15 @@ function transformToType(cleaned: string, targetType: CycleType): string {
 function cycleLineType(state: EditorState, direction: 1 | -1): TransactionSpec | null {
   const line = state.doc.lineAt(state.selection.main.head)
   const text = line.text.trim()
-  if (text === '') return null
 
-  const currentType = detectLineType(text)
+  // Empty line: treat as action and cycle to next type
+  const currentType = text === '' ? 'action' : detectLineType(text)
 
   const currentIndex = CYCLE_ORDER.indexOf(currentType)
   const nextIndex = (currentIndex + direction + CYCLE_ORDER.length) % CYCLE_ORDER.length
   const nextType = CYCLE_ORDER[nextIndex]
 
-  const cleaned = cleanText(text)
+  const cleaned = text === '' ? '' : cleanText(text)
   const newText = transformToType(cleaned, nextType)
 
   return {
@@ -137,9 +137,6 @@ function smartEnter(view: EditorView): boolean {
   const pos = state.selection.main.head
   const line = state.doc.lineAt(pos)
   const text = line.text.trim()
-
-  // Only apply at end of line
-  if (pos !== line.to) return false
 
   // Don't apply on empty lines
   if (text === '') return false

@@ -159,6 +159,16 @@ body.light .cm-panels button {
   font-style: italic;
 }
 
+/* Hide forced Fountain prefixes (@, ., !, >) — kept in raw text, invisible in editor */
+.fountain-prefix-hidden {
+  font-size: 0;
+  letter-spacing: 0;
+  color: transparent;
+  width: 0;
+  display: inline-block;
+  overflow: hidden;
+}
+
 /* ── Scrollbar styling ── */
 ::-webkit-scrollbar {
   width: 8px;
@@ -191,20 +201,101 @@ body.light ::-webkit-scrollbar-thumb:hover {
   background: #bbb;
 }
 
-/* ── Print ── */
+/* ── Print / PDF export ── */
 @media print {
-  body {
+  html, body, #root {
+    height: auto !important;
+    overflow: visible !important;
     background: white !important;
     color: black !important;
   }
 
-  .cm-editor {
-    font-size: 12pt;
+  /* Hide all UI chrome — keep only the editor content */
+  /* Toolbar, stats bar, episode nav, annotation panel, popups, overlays */
+  #root > div > div:first-child, /* Toolbar */
+  #root > div > div:last-of-type:not(.flex), /* StatsBar */
+  .fixed, /* All fixed overlays (popups, dialogs, type indicator) */
+  .cm-panels, /* CM6 search panel */
+  .cm-gutters, /* Line numbers */
+  .cm-cursorLayer,
+  .cm-selectionLayer {
+    display: none !important;
   }
 
-  /* Hide non-editor chrome */
-  .no-print {
+  /* Episode navigator + annotation sidebar */
+  #root > div > .flex > :first-child:not(.flex-1),
+  #root > div > .flex > :last-child:not(.flex-1) {
     display: none !important;
+  }
+
+  /* Editor fills the page */
+  .cm-editor {
+    height: auto !important;
+    overflow: visible !important;
+    font-size: 12pt !important;
+    background: white !important;
+  }
+
+  .cm-scroller {
+    overflow: visible !important;
+    font-family: "Courier Prime", "Courier New", Courier, monospace !important;
+    font-size: 12pt !important;
+    line-height: 1.5 !important;
+  }
+
+  .cm-content {
+    max-width: 6.5in !important;
+    margin: 0 auto !important;
+    padding: 0 !important;
+    color: black !important;
+    caret-color: transparent !important;
+  }
+
+  /* Reset all line decorations to black text */
+  .cm-line {
+    color: black !important;
+    background: none !important;
+    border: none !important;
+  }
+
+  /* Screenplay formatting */
+  .cm-line.fountain-scene-heading {
+    font-weight: bold !important;
+    text-transform: uppercase !important;
+    margin-top: 1em !important;
+  }
+
+  .cm-line.fountain-character {
+    text-transform: uppercase !important;
+    margin-left: 2in !important;
+    margin-top: 0.5em !important;
+  }
+
+  .cm-line.fountain-dialogue {
+    margin-left: 1in !important;
+    margin-right: 1in !important;
+  }
+
+  .cm-line.fountain-parenthetical {
+    margin-left: 1.5in !important;
+    font-style: italic !important;
+  }
+
+  .cm-line.fountain-transition {
+    text-align: right !important;
+    text-transform: uppercase !important;
+  }
+
+  /* Remove annotation highlights in print */
+  .cm-annotation-mark {
+    background: none !important;
+    border: none !important;
+  }
+
+  /* Page setup */
+  @page {
+    size: letter;
+    margin: 1in;
   }
 }
 

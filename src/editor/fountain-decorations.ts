@@ -251,6 +251,8 @@ const italicDeco = Decoration.mark({ class: 'fountain-italic' })
 const underlineDeco = Decoration.mark({ class: 'fountain-underline' })
 const noteDeco = Decoration.mark({ class: 'fountain-inline-note' })
 
+const prefixHiddenDeco = Decoration.mark({ class: 'fountain-prefix-hidden' })
+
 function buildMarkDecorations(view: EditorView): DecorationSet {
   const decorations: Range<Decoration>[] = []
   const doc = view.state.doc
@@ -282,6 +284,26 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
     const noteRegex = /\[\[(?!EPISODE)(.+?)\]\]/g
     while ((match = noteRegex.exec(text)) !== null) {
       decorations.push(noteDeco.range(offset + match.index, offset + match.index + match[0].length))
+    }
+  }
+
+  // Hide forced prefixes (@, ., !, >) at the start of lines
+  for (let i = 1; i <= doc.lines; i++) {
+    const line = doc.line(i)
+    const trimmed = line.text.trimStart()
+    const leadingSpaces = line.text.length - trimmed.length
+
+    if (trimmed.length < 2) continue
+
+    // @ = forced character, . = forced scene heading (but not ..), ! = forced action, > = forced transition (but not >...<)
+    if (
+      trimmed.startsWith('@') ||
+      (trimmed.startsWith('.') && trimmed[1] !== '.') ||
+      trimmed.startsWith('!') ||
+      (trimmed.startsWith('>') && !trimmed.endsWith('<'))
+    ) {
+      const prefixStart = line.from + leadingSpaces
+      decorations.push(prefixHiddenDeco.range(prefixStart, prefixStart + 1))
     }
   }
 

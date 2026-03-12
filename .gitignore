@@ -8,3 +8,5 @@ audit-log*.md
 consultations/
 FORMAT_IMPORT_EXPORT_SPEC.md
 VISUAL_UPGRADE_SPEC.md
+.vercel
+.env*.local

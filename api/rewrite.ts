@@ -100,7 +100,7 @@ async function proxyGemini(system: string, user: string, model: string, clientKe
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ parts: [{ text: user }] }],
         generationConfig: {
-          maxOutputTokens: 1024,
+          maxOutputTokens: 2048,
           responseMimeType: 'application/json',
         },
       }),
@@ -136,7 +136,7 @@ async function proxyAnthropic(system: string, user: string, model: string, clien
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1024,
+      max_tokens: 2048,
       system,
       messages: [{ role: 'user', content: user }],
     }),
@@ -174,7 +174,7 @@ async function proxyOpenAI(system: string, user: string, model: string, clientKe
         { role: 'system', content: system },
         { role: 'user', content: user },
       ],
-      max_tokens: 1024,
+      max_tokens: 2048,
     }),
   })
 

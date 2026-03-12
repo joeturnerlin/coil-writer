@@ -9,6 +9,7 @@ import {
   Minimize2,
   Palette,
   Pen,
+  Printer,
   Settings,
   Sparkles,
   Upload,
@@ -77,6 +78,11 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
     const result = await exportFile(content, 'fdx', fileName)
     const name = fileName.replace(/\.[^.]+$/, '') + result.extension
     downloadFile(result.data, name)
+  }
+
+  const handlePrintPDF = () => {
+    setShowExportMenu(false)
+    window.print()
   }
 
   const handleExportJSON = () => {
@@ -209,6 +215,30 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
               type="button"
             >
               Export as Final Draft (.fdx)
+            </button>
+            <div style={{ height: '1px', background: 'var(--border-color)' }} />
+            <button
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                width: '100%',
+                padding: '8px 12px',
+                textAlign: 'left',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              onClick={handlePrintPDF}
+              type="button"
+            >
+              <Printer size={12} />
+              Print to PDF
             </button>
           </div>
         )}
