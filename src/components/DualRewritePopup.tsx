@@ -7,6 +7,7 @@ import { useEditorStore } from '../store/editor-store'
 export function DualRewritePopup() {
   const {
     rewriteSelection,
+    comparisonEnabled,
     comparisonProviderA,
     comparisonModelA,
     comparisonProviderB,
@@ -87,7 +88,7 @@ export function DualRewritePopup() {
     return () => window.removeEventListener('keydown', handler)
   }, [clearRewrite])
 
-  if (!rewriteSelection) return null
+  if (!rewriteSelection || !comparisonEnabled) return null
 
   const handleAccept = (text: string, fromModel: string) => {
     const view = viewRef?.current

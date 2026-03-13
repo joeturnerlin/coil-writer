@@ -315,3 +315,23 @@ body.light .cm-annotation-mark {
 .panel-transition {
   transition: width 0.2s ease, opacity 0.2s ease;
 }
+
+/* ── Scanline animation for script analysis ── */
+@keyframes scanline-sweep {
+  0% { top: 0; opacity: 0; }
+  5% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+.analysis-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--accent-blue, #1565c0);
+  opacity: 0.2;
+  pointer-events: none;
+  z-index: 10;
+  animation: scanline-sweep 4s linear infinite;
+}

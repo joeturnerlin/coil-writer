@@ -27,9 +27,21 @@ export function AIRewritePopup() {
 
   const apiKey = apiKeys[provider] || ''
 
+  // Initialize custom text from selection
+  useEffect(() => {
+    if (rewriteSelection) {
+      setCustomText(rewriteSelection.text)
+      setInstruction('')
+    }
+  }, [rewriteSelection])
+
   // Auto-trigger rewrite on mount
   const triggerRewrite = useCallback(async () => {
     if (!rewriteSelection) return
+    if (!apiKey) {
+      setError(`No API key set for ${provider}. Add one in Settings (gear icon).`)
+      return
+    }
 
     setLoading(true)
     try {
@@ -43,7 +55,6 @@ export function AIRewritePopup() {
         currentProfile,
       )
       setSuggestions(result.suggestions)
-      setCustomText(rewriteSelection.text)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error')
     }
@@ -137,20 +148,17 @@ export function AIRewritePopup() {
             borderBottom: '1px solid var(--border-color)',
           }}
         >
-          <div>
-            <div
-              style={{
-                fontSize: '12px',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-                color: 'var(--text-primary)',
-              }}
-            >
-              AI Rewrite
-            </div>
-            <div style={{ ...labelStyle, marginTop: '2px' }}>{model}</div>
+          <div
+            style={{
+              fontSize: '12px',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              color: 'var(--text-primary)',
+            }}
+          >
+            Rewrite
           </div>
           <button
             style={{
@@ -189,7 +197,7 @@ export function AIRewritePopup() {
         <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border-color)' }}>
           <input
             style={inputStyle}
-            placeholder="Instruction (e.g., 'make more tense', 'add sensory detail')"
+            placeholder="Direction (e.g., 'make more tense', 'add sensory detail')"
             value={instruction}
             onChange={(e) => setInstruction(e.target.value)}
             onKeyDown={(e) => {
@@ -198,11 +206,12 @@ export function AIRewritePopup() {
                 handleReroll()
               }
             }}
+            autoFocus
           />
         </div>
 
         {/* No profile nudge */}
-        {!currentProfile && !isLoading && suggestions.length === 0 && (
+        {!currentProfile && !isLoading && suggestions.length === 0 && !error && (
           <div
             style={{
               padding: '10px 20px',
@@ -224,9 +233,9 @@ export function AIRewritePopup() {
                 fontWeight: 600,
                 borderRadius: 'var(--btn-radius)',
                 cursor: 'pointer',
-                background: 'var(--accent-cyan-dim)',
-                border: '1px solid var(--accent-cyan)',
-                color: 'var(--accent-cyan)',
+                background: 'rgba(255, 152, 0, 0.15)',
+                border: '1px solid #ff9800',
+                color: '#ff9800',
               }}
               onClick={() => {
                 clearRewrite()
@@ -287,7 +296,7 @@ export function AIRewritePopup() {
                 marginBottom: '10px',
               }}
             >
-              <span style={labelStyle}>Suggestions</span>
+              <span style={labelStyle}>AI Suggestions</span>
               <button
                 style={{
                   display: 'flex',
@@ -363,72 +372,54 @@ export function AIRewritePopup() {
                   }}
                 >
                   <Check size={10} />
-                  Click to accept
+                  Insert
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Compare with another model */}
-        {comparisonEnabled && suggestions.length > 0 && (
-          <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border-color)' }}>
-            <button
-              style={{
-                width: '100%', padding: '8px 12px', fontSize: '10px',
-                fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
-                borderRadius: 'var(--card-radius)', cursor: 'pointer',
-                background: 'var(--bg-hover)', border: '1px solid var(--border-light)',
-                color: 'var(--text-primary)', transition: 'all 0.15s ease',
-              }}
-              onClick={() => {
-                // Switch to comparison mode — DualRewritePopup will pick up rewriteSelection
-                useAIStore.getState().setSuggestions([])
-              }}
-              type="button"
-            >
-              Compare with another model
-            </button>
-          </div>
-        )}
-
-        {/* Custom text */}
-        {suggestions.length > 0 && (
-          <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-color)' }}>
-            <div style={{ ...labelStyle, marginBottom: '8px' }}>Or write your own</div>
-            <textarea
-              style={{
-                ...inputStyle,
-                fontFamily: "'Courier Prime', monospace",
-                fontSize: '12px',
-                resize: 'none',
-                marginBottom: '8px',
-              }}
-              rows={3}
-              value={customText}
-              onChange={(e) => setCustomText(e.target.value)}
-            />
-            <button
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                fontSize: '11px',
-                fontFamily: "'JetBrains Mono', monospace",
-                fontWeight: 600,
-                borderRadius: 'var(--card-radius)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-                background: 'var(--accent-cyan)',
-                color: '#0a0a0f',
-                border: 'none',
-              }}
-              onClick={() => handleAccept(customText)}
-              type="button"
-            >
-              Use Custom Text
-            </button>
-          </div>
-        )}
+        {/* Custom text — always visible once popup is open */}
+        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border-color)' }}>
+          <div style={{ ...labelStyle, marginBottom: '8px' }}>Your edit</div>
+          <textarea
+            style={{
+              ...inputStyle,
+              fontFamily: "'Courier Prime', monospace",
+              fontSize: '12px',
+              resize: 'none',
+              marginBottom: '8px',
+            }}
+            rows={3}
+            value={customText}
+            onChange={(e) => setCustomText(e.target.value)}
+            placeholder="Write your own version here..."
+          />
+          <button
+            style={{
+              width: '100%',
+              padding: '8px 12px',
+              fontSize: '11px',
+              fontFamily: "'JetBrains Mono', monospace",
+              fontWeight: 600,
+              borderRadius: 'var(--card-radius)',
+              cursor: customText.trim() && customText !== rewriteSelection.text ? 'pointer' : 'default',
+              transition: 'all 0.15s ease',
+              background: customText.trim() && customText !== rewriteSelection.text ? 'var(--accent-cyan)' : 'var(--bg-hover)',
+              color: customText.trim() && customText !== rewriteSelection.text ? '#0a0a0f' : 'var(--text-muted)',
+              border: 'none',
+              opacity: customText.trim() && customText !== rewriteSelection.text ? 1 : 0.5,
+            }}
+            onClick={() => {
+              if (customText.trim() && customText !== rewriteSelection.text) {
+                handleAccept(customText)
+              }
+            }}
+            type="button"
+          >
+            Insert
+          </button>
+        </div>
       </div>
     </div>
   )

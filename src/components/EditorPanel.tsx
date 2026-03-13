@@ -6,6 +6,7 @@ import { createEditorExtensions, fontSizeCompartment, readOnlyCompartment, theme
 import { fountainDarkTheme, fountainLightTheme } from '../editor/fountain-theme'
 import { useCodeMirror } from '../editor/use-codemirror'
 import { saveToDB } from '../lib/persistence'
+import type { AnalysisPhase } from '../lib/script-analysis'
 import { useAIStore } from '../store/ai-store'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
@@ -21,6 +22,8 @@ export function EditorPanel(_props: EditorPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const { content, fileName, setStats, setCursorLine, updateContent } = useEditorStore()
   const { theme, fontSize, zoomLevel, editorMode } = useSettingsStore()
+  const analysisStatus = useAIStore((s) => s.analysisState.status)
+  const isAnalyzing = analysisStatus === 'sending' || analysisStatus === 'analyzing'
   const [selectionData, setSelectionData] = useState<{ from: number; to: number; text: string } | null>(null)
   const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | null>(null)
 
@@ -215,9 +218,10 @@ export function EditorPanel(_props: EditorPanelProps) {
 
   return (
     <>
-      <div className="h-full overflow-auto">
+      <div className="h-full overflow-auto" style={{ position: 'relative' }}>
         <HeroSection />
         <div ref={containerRef} />
+        {isAnalyzing && <div className="analysis-scanline" />}
       </div>
       {((selectionData && popupPosition && editorMode === 'annotate') || editingAnnotation) && (
         <AnnotationPopup

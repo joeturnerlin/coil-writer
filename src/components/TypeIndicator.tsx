@@ -82,7 +82,7 @@ export function TypeIndicator() {
       }}
     >
       {lineType}
-      <span style={{ marginLeft: '8px', fontWeight: 400, color: 'var(--text-dim)' }}>Tab to cycle</span>
+      <span style={{ marginLeft: '8px', fontWeight: 400, color: 'var(--text-dim)' }}>— Tab to cycle</span>
     </div>
   )
 }
