@@ -25,7 +25,9 @@ export const fountainBaseTheme = EditorView.baseTheme({
     caretColor: 'var(--caret-color)',
   },
   '.cm-gutters': {
-    display: 'none',
+    background: 'transparent',
+    border: 'none',
+    paddingRight: '4px',
   },
   '.cm-activeLine': {
     backgroundColor: 'transparent',

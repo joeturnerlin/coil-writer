@@ -1,6 +1,15 @@
 import { autocompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete'
 import type { Extension } from '@codemirror/state'
 
+/** Scene heading prefixes (SmartType field 1) */
+const SCENE_PREFIXES = ['INT. ', 'EXT. ', 'INT./EXT. ', 'I/E. ']
+
+/** Standard times of day (SmartType field 3) */
+const TIMES_OF_DAY = [
+  'DAY', 'NIGHT', 'CONTINUOUS', 'LATER', 'MOMENTS LATER',
+  'SAME', 'DAWN', 'DUSK', 'MORNING', 'EVENING', 'AFTERNOON',
+]
+
 /**
  * Character name autocomplete — Final Draft style.
  *
@@ -84,6 +93,125 @@ function extractCharacterNames(doc: string): string[] {
   return Array.from(names).sort()
 }
 
+/** Extract unique locations from existing scene headings in the document. */
+function extractLocations(doc: string): string[] {
+  const locations = new Set<string>()
+  const lines = doc.split('\n')
+  for (const line of lines) {
+    const trimmed = line.trim()
+    let heading = ''
+    if (/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)\s*/i.test(trimmed)) {
+      heading = trimmed.replace(/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)\s*/i, '')
+    } else if (trimmed.startsWith('.') && trimmed.length > 1 && trimmed[1] !== '.') {
+      heading = trimmed.slice(1).replace(/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)\s*/i, '')
+    }
+    if (!heading) continue
+    const dashIdx = heading.indexOf(' - ')
+    const location = dashIdx >= 0 ? heading.slice(0, dashIdx).trim() : heading.trim()
+    if (location) locations.add(location.toUpperCase())
+  }
+  return Array.from(locations).sort()
+}
+
+/** Scene heading completion source — three-field SmartType. */
+function sceneHeadingCompletionSource(context: CompletionContext): CompletionResult | null {
+  const { state, pos } = context
+  const line = state.doc.lineAt(pos)
+  const textBefore = line.text.slice(0, pos - line.from)
+  const trimmed = textBefore.trim()
+
+  // Only activate after blank line or at document start
+  if (line.number > 1) {
+    const prevLine = state.doc.line(line.number - 1)
+    if (prevLine.text.trim() !== '') return null
+  }
+
+  // Field 1: Prefix completion (INT./EXT./etc.)
+  if (trimmed === '' || trimmed === '.') return null
+
+  const upper = trimmed.toUpperCase()
+  const isForced = trimmed.startsWith('.')
+  const matchText = isForced ? upper.slice(1) : upper
+
+  const hasFullPrefix = /^\.?(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.)\s/i.test(trimmed)
+
+  if (!hasFullPrefix) {
+    if (!/^\.?[IE]/i.test(trimmed)) return null
+    const prefixMatches = SCENE_PREFIXES.filter(p => p.startsWith(matchText))
+    if (prefixMatches.length === 0) return null
+    return {
+      from: line.from + (isForced ? 1 : 0),
+      options: prefixMatches.map(p => ({
+        label: p.trimEnd(),
+        apply: (isForced ? '' : '.') + p,
+        type: 'keyword',
+        boost: 2,
+      })),
+      filter: false,
+    }
+  }
+
+  // Field 2: Location completion (after prefix)
+  const afterPrefix = trimmed.replace(/^\.?(INT\.|EXT\.|INT\.\/EXT\.|I\/E\.)\s*/i, '')
+  const hasDash = afterPrefix.includes(' - ')
+
+  if (!hasDash) {
+    const doc = state.doc.toString()
+    const allLocations = extractLocations(doc)
+    const locUpper = afterPrefix.toUpperCase()
+    const prefixEnd = textBefore.length - afterPrefix.length
+    const from = line.from + prefixEnd
+
+    if (afterPrefix.length < 1) {
+      if (allLocations.length === 0) return null
+      return {
+        from,
+        options: allLocations.map(loc => ({
+          label: loc,
+          apply: loc + ' - ',
+          type: 'text',
+          boost: 1,
+        })),
+        filter: false,
+      }
+    }
+
+    const matches = allLocations.filter(loc => loc.startsWith(locUpper) && loc !== locUpper)
+    if (matches.length === 0) return null
+    return {
+      from,
+      options: matches.map(loc => ({
+        label: loc,
+        apply: loc + ' - ',
+        type: 'text',
+        boost: 1,
+      })),
+      filter: false,
+    }
+  }
+
+  // Field 3: Time of day completion (after " - ")
+  const afterDash = afterPrefix.slice(afterPrefix.indexOf(' - ') + 3)
+  const timeUpper = afterDash.toUpperCase()
+  const dashPos = textBefore.lastIndexOf(' - ') + 3
+  const from = line.from + dashPos
+
+  const timeMatches = afterDash.length === 0
+    ? TIMES_OF_DAY
+    : TIMES_OF_DAY.filter(t => t.startsWith(timeUpper) && t !== timeUpper)
+
+  if (timeMatches.length === 0) return null
+  return {
+    from,
+    options: timeMatches.map(t => ({
+      label: t,
+      type: 'text',
+      boost: 1,
+    })),
+    filter: false,
+  }
+}
+
 /** Check if the cursor is in a position where a character name is expected. */
 function isCharacterPosition(context: CompletionContext): boolean {
   const { state, pos } = context
@@ -138,12 +266,13 @@ function characterCompletionSource(context: CompletionContext): CompletionResult
 }
 
 /**
- * CM6 extension that provides character name autocomplete.
- * Activates when typing uppercase letters after a blank line.
+ * CM6 extension that provides screenplay autocomplete:
+ * - Character names (after blank line, typing uppercase)
+ * - Scene heading SmartType (prefix → location → time of day)
  */
 export function characterAutocomplete(): Extension {
   return autocompletion({
-    override: [characterCompletionSource],
+    override: [sceneHeadingCompletionSource, characterCompletionSource],
     defaultKeymap: true,
     icons: false,
     optionClass: () => 'cm-character-completion',

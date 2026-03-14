@@ -4,6 +4,10 @@ import { Compartment, EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { annotationField } from './annotation-state'
 import { characterAutocomplete } from './character-autocomplete'
+import { revisionGutterExtension, markLines } from './revision-gutter'
+import { sceneNumberGutterExtension } from './scene-number-gutter'
+import { pageBreakLinesExtension } from './page-break-lines'
+import { useRevisionStore } from '../store/revision-store'
 import { fountainLineDecorations, fountainMarkDecorations } from './fountain-decorations'
 import { fountainKeymap } from './fountain-keymap'
 import { fountainLanguage } from './fountain-language'
@@ -66,6 +70,11 @@ export function createEditorExtensions(
     // Keymaps
     keymap.of([...fountainKeymap, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
 
+    // Revision gutter — shows * marks on changed lines
+    revisionGutterExtension(),
+    sceneNumberGutterExtension(),
+    pageBreakLinesExtension(), // Page break indicator lines — dashed rules every ~55 lines
+
     // Built-in extensions
     history(),
     search(),
@@ -85,6 +94,21 @@ export function createEditorExtensions(
               const cursorLine = update.state.doc.lineAt(update.state.selection.main.head).number
               const sel = update.state.selection.main
               onUpdate({ doc, cursorLine, selection: { from: sel.from, to: sel.to } })
+            }
+
+            // Track manual edits for revision marks when revision mode is on
+            if (update.docChanged && useRevisionStore.getState().revisionMode) {
+              const changedLines: number[] = []
+              update.changes.iterChangedRanges((_fromA, _toA, fromB, toB) => {
+                const startLine = update.state.doc.lineAt(fromB).number
+                const endLine = update.state.doc.lineAt(Math.min(toB, update.state.doc.length)).number
+                for (let l = startLine; l <= endLine; l++) {
+                  changedLines.push(l)
+                }
+              })
+              if (changedLines.length > 0) {
+                update.view.dispatch({ effects: markLines.of(changedLines) })
+              }
             }
           }),
         ]

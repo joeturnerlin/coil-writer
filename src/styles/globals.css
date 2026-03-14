@@ -292,10 +292,28 @@ body.light ::-webkit-scrollbar-thumb:hover {
     border: none !important;
   }
 
-  /* Page setup */
+  /* Hide gutters in print */
+  .cm-revision-gutter,
+  .cm-scene-number-gutter {
+    display: none !important;
+  }
+
+  /* Hide page break indicator lines in print */
+  .cm-page-break-line {
+    border-bottom: none !important;
+    padding-bottom: 0 !important;
+    margin-bottom: 0 !important;
+  }
+
+  /* Hide scanline */
+  .analysis-scanline {
+    display: none !important;
+  }
+
+  /* Page setup — industry standard screenplay */
   @page {
     size: letter;
-    margin: 1in;
+    margin: 1in 1in 1in 1.5in;
   }
 }
 
@@ -334,4 +352,15 @@ body.light .cm-annotation-mark {
   pointer-events: none;
   z-index: 10;
   animation: scanline-sweep 4s linear infinite;
+}
+
+/* ── Page break indicator colors ── */
+.cm-page-break-line {
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.08) !important;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+body.light .cm-page-break-line {
+  border-bottom-color: rgba(0, 0, 0, 0.08) !important;
 }

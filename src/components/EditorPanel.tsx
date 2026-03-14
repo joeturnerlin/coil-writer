@@ -1,17 +1,15 @@
 import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { annotationField } from '../editor/annotation-state'
 import { createEditorExtensions, fontSizeCompartment, readOnlyCompartment, themeCompartment } from '../editor/editor-setup'
 import { fountainDarkTheme, fountainLightTheme } from '../editor/fountain-theme'
 import { useCodeMirror } from '../editor/use-codemirror'
 import { saveToDB } from '../lib/persistence'
-import type { AnalysisPhase } from '../lib/script-analysis'
 import { useAIStore } from '../store/ai-store'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
 import { useSettingsStore } from '../store/settings-store'
-import { AnnotationPopup } from './AnnotationPopup'
 import { HeroSection } from './HeroSection'
 
 interface EditorPanelProps {
@@ -24,8 +22,6 @@ export function EditorPanel(_props: EditorPanelProps) {
   const { theme, fontSize, zoomLevel, editorMode } = useSettingsStore()
   const analysisStatus = useAIStore((s) => s.analysisState.status)
   const isAnalyzing = analysisStatus === 'sending' || analysisStatus === 'analyzing'
-  const [selectionData, setSelectionData] = useState<{ from: number; to: number; text: string } | null>(null)
-  const [popupPosition, setPopupPosition] = useState<{ x: number; y: number } | null>(null)
 
   // Debounce timer ref for auto-save
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -157,7 +153,7 @@ export function EditorPanel(_props: EditorPanelProps) {
     return () => useEditorStore.getState().setViewRef({ current: null })
   }, [viewRef])
 
-  // Show annotation popup on mouseup (not during drag) in annotate mode
+  // In AI Assist mode, selecting text goes straight to AI rewrite
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
@@ -171,11 +167,17 @@ export function EditorPanel(_props: EditorPanelProps) {
       const doc = view.state.doc.toString()
       const selectedText = doc.slice(sel.from, sel.to)
       if (selectedText.trim().length < 3) return
-      setSelectionData({ from: sel.from, to: sel.to, text: selectedText })
-      const coords = view.coordsAtPos(sel.to)
-      if (coords) {
-        setPopupPosition({ x: coords.left, y: coords.bottom })
-      }
+
+      // Open AI rewrite popup directly
+      const contextStart = Math.max(0, sel.from - 500)
+      const contextEnd = Math.min(doc.length, sel.to + 500)
+      const context = doc.slice(contextStart, contextEnd)
+      useAIStore.getState().setRewriteSelection({
+        from: sel.from,
+        to: sel.to,
+        text: selectedText,
+        context,
+      })
     }
     container.addEventListener('mouseup', handler)
     return () => container.removeEventListener('mouseup', handler)
@@ -186,15 +188,17 @@ export function EditorPanel(_props: EditorPanelProps) {
 
   useEffect(() => {
     if (!editingAnnotation || !viewRef.current) return
-    const coords = viewRef.current.coordsAtPos(editingAnnotation.to)
-    if (coords) {
-      setSelectionData({
-        from: editingAnnotation.from,
-        to: editingAnnotation.to,
-        text: editingAnnotation.selectedText,
-      })
-      setPopupPosition({ x: coords.left, y: coords.bottom })
-    }
+    // Open AI rewrite for editing existing annotations too
+    const doc = viewRef.current.state.doc.toString()
+    const contextStart = Math.max(0, editingAnnotation.from - 500)
+    const contextEnd = Math.min(doc.length, editingAnnotation.to + 500)
+    const context = doc.slice(contextStart, contextEnd)
+    useAIStore.getState().setRewriteSelection({
+      from: editingAnnotation.from,
+      to: editingAnnotation.to,
+      text: editingAnnotation.selectedText,
+      context,
+    })
   }, [editingAnnotation, viewRef])
 
   // Apply zoom: font size via CM6 compartment (triggers line-height recalc),
@@ -223,31 +227,6 @@ export function EditorPanel(_props: EditorPanelProps) {
         <div ref={containerRef} />
         {isAnalyzing && <div className="analysis-scanline" />}
       </div>
-      {((selectionData && popupPosition && editorMode === 'annotate') || editingAnnotation) && (
-        <AnnotationPopup
-          selection={selectionData}
-          position={popupPosition}
-          onClose={() => {
-            setSelectionData(null)
-            setPopupPosition(null)
-          }}
-          onAIRewrite={() => {
-            if (!selectionData || !viewRef.current) return
-            const doc = viewRef.current.state.doc.toString()
-            // Get 500 chars of context before and after selection
-            const contextStart = Math.max(0, selectionData.from - 500)
-            const contextEnd = Math.min(doc.length, selectionData.to + 500)
-            const context = doc.slice(contextStart, contextEnd)
-
-            useAIStore.getState().setRewriteSelection({
-              from: selectionData.from,
-              to: selectionData.to,
-              text: selectionData.text,
-              context,
-            })
-          }}
-        />
-      )}
     </>
   )
 }

@@ -1,8 +1,10 @@
 import { Check, Loader2, RefreshCw, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { markLines } from '../editor/revision-gutter'
 import { requestRewrite } from '../lib/ai-provider'
 import { useAIStore } from '../store/ai-store'
 import { useEditorStore } from '../store/editor-store'
+import { useRevisionStore } from '../store/revision-store'
 
 export function AIRewritePopup() {
   const {
@@ -78,12 +80,39 @@ export function AIRewritePopup() {
   // Don't render when comparison mode is active — DualRewritePopup handles it
   if (!rewriteSelection || comparisonEnabled) return null
 
-  const handleAccept = (text: string) => {
+  const handleAccept = (text: string, isCustom = false) => {
     const view = viewRef?.current
     if (!view) return
+
+    // Get line number before the edit
+    const lineNumber = view.state.doc.lineAt(rewriteSelection.from).number
+
+    // Apply the text change
     view.dispatch({
       changes: { from: rewriteSelection.from, to: rewriteSelection.to, insert: text },
     })
+
+    // Log the revision
+    const newLineCount = text.split('\n').length
+    const changedLines: number[] = []
+    for (let i = 0; i < newLineCount; i++) {
+      changedLines.push(lineNumber + i)
+    }
+
+    useRevisionStore.getState().addRevision({
+      from: rewriteSelection.from,
+      to: rewriteSelection.to,
+      originalText: rewriteSelection.text,
+      newText: text,
+      type: isCustom ? 'manual-edit' : 'ai-rewrite',
+      lineNumber,
+    })
+
+    // Mark the changed lines in the gutter
+    if (changedLines.length > 0) {
+      view.dispatch({ effects: markLines.of(changedLines) })
+    }
+
     clearRewrite()
   }
 
@@ -412,7 +441,7 @@ export function AIRewritePopup() {
             }}
             onClick={() => {
               if (customText.trim() && customText !== rewriteSelection.text) {
-                handleAccept(customText)
+                handleAccept(customText, true)
               }
             }}
             type="button"

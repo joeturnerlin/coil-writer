@@ -5,7 +5,6 @@ import {
   FileText,
   List,
   Maximize2,
-  MessageSquare,
   Minimize2,
   Palette,
   Pen,
@@ -21,8 +20,6 @@ import { importFile, exportFile } from '../lib/converters/registry'
 import { exportAnnotatedFountain, exportAnnotationsJSON } from '../lib/export'
 import { openScriptFile, downloadFile, saveFountainFile } from '../lib/file-io'
 import { CheatSheetButton } from './CheatSheet'
-import { useAnalysis } from './AnalysisPanel'
-import { useAIStore } from '../store/ai-store'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
 import { useSettingsStore } from '../store/settings-store'
@@ -38,8 +35,6 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
   const { fileName, content } = useEditorStore()
   const { preset, toggleTheme, zoomLevel, zoomIn, zoomOut, editorMode, setEditorMode, showEpisodeNav, toggleEpisodeNav } = useSettingsStore()
   const { annotations } = useAnnotationStore()
-  const { currentProfile, analysisState } = useAIStore()
-  const triggerAnalysis = useAnalysis()
   const [showExportMenu, setShowExportMenu] = useState(false)
   const exportMenuRef = useRef<HTMLDivElement>(null)
 
@@ -98,7 +93,7 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
   }
 
   const hasAnnotations = annotations.length > 0
-  const presetName = PRESET_LIST.find((p) => p.id === preset)?.name ?? 'Recoil'
+  const presetName = PRESET_LIST.find((p) => p.id === preset)?.name ?? 'Dark'
 
   const sep = <div className="w-px h-5 mx-2" style={{ background: 'var(--border-color)' }} />
 
@@ -294,8 +289,8 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
           onClick={() => setEditorMode('annotate')}
           type="button"
         >
-          <MessageSquare size={12} />
-          Annotate
+          <Sparkles size={12} />
+          AI Assist
         </button>
       </div>
 
@@ -338,40 +333,11 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
         }}
         onClick={toggleTheme}
         type="button"
-        title="Cycle theme: Recoil → Muted → Light"
+        title="Cycle theme: Dark → Muted → Light"
       >
         <Palette size={13} />
         {presetName}
       </button>
-
-      {/* Analyze Script */}
-      {content && (
-        <button
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '5px',
-            padding: '4px 10px',
-            fontSize: '11px',
-            fontWeight: currentProfile ? 600 : 500,
-            background: currentProfile ? 'var(--accent-cyan-dim)' : 'transparent',
-            border: currentProfile ? '1px solid var(--accent-cyan)' : '1px solid transparent',
-            borderRadius: '5px',
-            color: currentProfile ? 'var(--accent-cyan)' : 'var(--text-muted)',
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            fontFamily: "'JetBrains Mono', 'Inter', sans-serif",
-            opacity: analysisState.status === 'analyzing' || analysisState.status === 'sending' ? 0.5 : 1,
-          }}
-          onClick={triggerAnalysis}
-          disabled={analysisState.status === 'analyzing' || analysisState.status === 'sending'}
-          type="button"
-          title={currentProfile ? 'Re-analyze script voice profile' : 'Analyze script for voice profiles'}
-        >
-          <Sparkles size={14} />
-          <span>{currentProfile ? 'Analyzed' : 'Analyze'}</span>
-        </button>
-      )}
 
       {/* Episode nav toggle */}
       <button

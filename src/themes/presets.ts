@@ -25,7 +25,7 @@ export interface ThemePreset {
 
 const recoil: ThemePreset = {
   id: 'recoil',
-  name: 'Recoil',
+  name: 'Dark',
   isDark: true,
   vars: {
     // Backgrounds

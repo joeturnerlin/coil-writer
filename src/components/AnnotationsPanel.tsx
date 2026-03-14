@@ -1,56 +1,24 @@
-import { X } from 'lucide-react'
-import { useMemo } from 'react'
-import type { AnnotationAction, AnnotationSeverity } from '../editor/types'
-import { useAnnotationStore } from '../store/annotation-store'
+import { History, Sparkles, Trash2, X } from 'lucide-react'
+import { useAIStore } from '../store/ai-store'
+import { useRevisionStore, REVISION_COLORS } from '../store/revision-store'
 import { useSettingsStore } from '../store/settings-store'
-import { AnnotationCard } from './AnnotationCard'
+import { useAnalysis } from './AnalysisPanel'
+import { RevisionCard } from './RevisionCard'
 
 export function AnnotationsPanel() {
-  const {
-    annotations,
-    filterAction,
-    setFilterAction,
-    filterSeverity,
-    setFilterSeverity,
-    filterDimension,
-    setFilterDimension,
-  } = useAnnotationStore()
   const { toggleAnnotations } = useSettingsStore()
+  const { currentProfile, analysisState } = useAIStore()
+  const { revisions, revisionMode, toggleRevisionMode, startNewPass, clearRevisions, currentPass } =
+    useRevisionStore()
+  const triggerAnalysis = useAnalysis()
+  const isAnalyzing = analysisState.status === 'analyzing' || analysisState.status === 'sending'
 
-  // Collect unique dimensions from all annotations
-  const allDimensions = useMemo(() => {
-    const dims = new Set<string>()
-    for (const a of annotations) {
-      if (a.dimensions) {
-        for (const d of a.dimensions) dims.add(d)
-      }
-    }
-    return [...dims].sort()
-  }, [annotations])
+  const passInfo = REVISION_COLORS.find((c) => c.pass === currentPass)
+  const passColor = passInfo?.color ?? '#4fc3f7'
+  const passName = passInfo?.name ?? `Pass ${currentPass}`
 
-  // Apply all filters (AND logic)
-  const filtered = annotations.filter((a) => {
-    if (filterAction !== 'all' && a.action !== filterAction) return false
-    if (filterSeverity !== 'all' && a.severity !== filterSeverity) return false
-    if (filterDimension !== 'all' && (!a.dimensions || !a.dimensions.includes(filterDimension))) return false
-    return true
-  })
-
-  const sorted = [...filtered].sort((a, b) => a.from - b.from)
-
-  const selectStyle: React.CSSProperties = {
-    width: '100%',
-    fontSize: '11px',
-    fontFamily: "'JetBrains Mono', monospace",
-    fontWeight: 500,
-    padding: '6px 10px',
-    borderRadius: 'var(--btn-radius)',
-    background: 'var(--bg-primary)',
-    border: '1px solid var(--border-color)',
-    color: 'var(--text-primary)',
-    appearance: 'none' as const,
-    cursor: 'pointer',
-  }
+  // Sort revisions by document position
+  const sorted = [...revisions].sort((a, b) => a.from - b.from)
 
   return (
     <div
@@ -83,7 +51,7 @@ export function AnnotationsPanel() {
             color: 'var(--text-muted)',
           }}
         >
-          Annotations ({annotations.length})
+          Revisions ({revisions.length})
         </span>
         <button
           style={{
@@ -103,57 +71,119 @@ export function AnnotationsPanel() {
         </button>
       </div>
 
-      {/* Filters */}
+      {/* Revision mode controls */}
       <div
         style={{
           padding: '10px 16px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '6px',
+          gap: '8px',
           borderBottom: '1px solid var(--border-color)',
         }}
       >
-        <select
-          style={selectStyle}
-          value={filterAction}
-          onChange={(e) => setFilterAction(e.target.value as AnnotationAction | 'all')}
+        {/* Revision mode toggle */}
+        <button
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            width: '100%',
+            padding: '6px 10px',
+            fontSize: '10px',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 600,
+            borderRadius: 'var(--btn-radius)',
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            background: revisionMode ? 'rgba(79, 195, 247, 0.15)' : 'var(--bg-primary)',
+            border: revisionMode ? '1px solid #4fc3f7' : '1px solid var(--border-color)',
+            color: revisionMode ? '#4fc3f7' : 'var(--text-muted)',
+          }}
+          onClick={toggleRevisionMode}
+          type="button"
+          title={revisionMode ? 'Stop tracking manual edits' : 'Start tracking manual edits'}
         >
-          <option value="all">All Actions</option>
-          <option value="rewrite">Rewrite</option>
-          <option value="delete">Delete</option>
-          <option value="move">Move</option>
-          <option value="flag">Flag</option>
-        </select>
-        <select
-          style={selectStyle}
-          value={filterSeverity}
-          onChange={(e) => setFilterSeverity(e.target.value as AnnotationSeverity | 'all')}
+          <History size={12} />
+          {revisionMode ? 'Tracking Edits' : 'Track Edits'}
+        </button>
+
+        {/* Pass info + controls */}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
         >
-          <option value="all">All Severity</option>
-          <option value="P1">P1</option>
-          <option value="P2">P2</option>
-          <option value="P3">P3</option>
-        </select>
-        {allDimensions.length > 0 && (
-          <select
-            style={selectStyle}
-            value={filterDimension}
-            onChange={(e) => setFilterDimension(e.target.value)}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '9px',
+              fontFamily: "'JetBrains Mono', monospace",
+              color: 'var(--text-muted)',
+            }}
           >
-            <option value="all">All Dimensions</option>
-            {allDimensions.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-        )}
+            <span
+              style={{
+                width: '8px',
+                height: '8px',
+                borderRadius: '50%',
+                background: passColor,
+                display: 'inline-block',
+              }}
+            />
+            Rev. {passName}
+          </div>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              style={{
+                padding: '2px 6px',
+                fontSize: '9px',
+                fontFamily: "'JetBrains Mono', monospace",
+                fontWeight: 500,
+                borderRadius: '3px',
+                cursor: 'pointer',
+                background: 'transparent',
+                border: '1px solid var(--border-color)',
+                color: 'var(--text-dim)',
+              }}
+              onClick={startNewPass}
+              type="button"
+              title="Start new revision pass"
+            >
+              New Pass
+            </button>
+            {revisions.length > 0 && (
+              <button
+                style={{
+                  padding: '2px 4px',
+                  fontSize: '9px',
+                  background: 'transparent',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                  color: 'var(--text-dim)',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                onClick={clearRevisions}
+                type="button"
+                title="Clear all revisions"
+              >
+                <Trash2 size={9} />
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* List */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-        {sorted.map((ann) => (
-          <AnnotationCard key={ann.id} annotation={ann} />
+      {/* Revision list */}
+      <div style={{ flex: 1, overflowY: 'auto' }}>
+        {sorted.map((rev) => (
+          <RevisionCard key={rev.id} revision={rev} />
         ))}
         {sorted.length === 0 && (
           <div
@@ -163,9 +193,61 @@ export function AnnotationsPanel() {
               fontSize: '11px',
               color: 'var(--text-muted)',
               fontFamily: "'JetBrains Mono', monospace",
+              lineHeight: '1.6',
             }}
           >
-            {annotations.length === 0 ? 'Select text to create annotations' : 'No annotations match filter'}
+            {revisionMode
+              ? 'Edits will appear here as you type'
+              : 'AI rewrites logged automatically. Toggle "Track Edits" for manual changes.'}
+          </div>
+        )}
+      </div>
+
+      {/* Analyze button */}
+      <div
+        style={{
+          padding: '12px 16px',
+          borderTop: '1px solid var(--border-color)',
+        }}
+      >
+        <button
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            width: '100%',
+            padding: '8px 12px',
+            fontSize: '11px',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 600,
+            borderRadius: 'var(--btn-radius)',
+            cursor: isAnalyzing ? 'default' : 'pointer',
+            transition: 'all 0.15s ease',
+            background: currentProfile ? 'rgba(255, 152, 0, 0.15)' : 'rgba(255, 152, 0, 0.1)',
+            border: '1px solid #ff9800',
+            color: '#ff9800',
+            opacity: isAnalyzing ? 0.5 : 1,
+          }}
+          onClick={triggerAnalysis}
+          disabled={isAnalyzing}
+          type="button"
+          title={currentProfile ? 'Re-analyze script voice profile' : 'Analyze script to match your writing voice'}
+        >
+          <Sparkles size={14} />
+          {currentProfile ? 'Re-analyze Voice' : 'Analyze Voice'}
+        </button>
+        {currentProfile && (
+          <div
+            style={{
+              marginTop: '6px',
+              fontSize: '9px',
+              fontFamily: "'Inter', sans-serif",
+              color: 'var(--text-muted)',
+              textAlign: 'center',
+            }}
+          >
+            Voice profile active
           </div>
         )}
       </div>

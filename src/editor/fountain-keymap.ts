@@ -162,6 +162,29 @@ function smartEnter(view: EditorView): boolean {
   return true
 }
 
+/**
+ * Force-assign a line to a specific element type.
+ * Used by Cmd+1-7 shortcuts (Final Draft convention).
+ */
+function forceElementType(view: EditorView, targetType: CycleType | 'shot'): boolean {
+  const line = view.state.doc.lineAt(view.state.selection.main.head)
+  const text = line.text.trim()
+  const cleaned = text === '' ? '' : cleanText(text)
+
+  let newText: string
+  if (targetType === 'shot') {
+    newText = cleaned.toUpperCase()
+  } else {
+    newText = transformToType(cleaned, targetType)
+  }
+
+  view.dispatch({
+    changes: { from: line.from, to: line.to, insert: newText },
+    selection: { anchor: line.from + newText.length },
+  })
+  return true
+}
+
 export const fountainKeymap: KeyBinding[] = [
   {
     key: 'Tab',
@@ -170,7 +193,6 @@ export const fountainKeymap: KeyBinding[] = [
       if (spec) {
         view.dispatch(spec)
       }
-      // Always consume Tab to prevent browser focus cycling
       return true
     },
   },
@@ -181,12 +203,40 @@ export const fountainKeymap: KeyBinding[] = [
       if (spec) {
         view.dispatch(spec)
       }
-      // Always consume Shift-Tab to prevent browser focus cycling
       return true
     },
   },
   {
     key: 'Enter',
     run: smartEnter,
+  },
+  // ── Cmd+1-7: Direct element assignment (Final Draft convention) ──
+  {
+    key: 'Mod-1',
+    run(view) { return forceElementType(view, 'scene-heading') },
+  },
+  {
+    key: 'Mod-2',
+    run(view) { return forceElementType(view, 'action') },
+  },
+  {
+    key: 'Mod-3',
+    run(view) { return forceElementType(view, 'character') },
+  },
+  {
+    key: 'Mod-4',
+    run(view) { return forceElementType(view, 'parenthetical') },
+  },
+  {
+    key: 'Mod-5',
+    run(view) { return forceElementType(view, 'dialogue') },
+  },
+  {
+    key: 'Mod-6',
+    run(view) { return forceElementType(view, 'transition') },
+  },
+  {
+    key: 'Mod-7',
+    run(view) { return forceElementType(view, 'shot') },
   },
 ]
