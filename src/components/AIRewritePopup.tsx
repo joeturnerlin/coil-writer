@@ -124,7 +124,7 @@ export function AIRewritePopup() {
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
-    fontSize: '11px',
+    fontSize: '12px',
     fontFamily: "'Inter', sans-serif",
     padding: '8px 12px',
     borderRadius: 'var(--card-radius)',
@@ -134,7 +134,7 @@ export function AIRewritePopup() {
   }
 
   const labelStyle: React.CSSProperties = {
-    fontSize: '10px',
+    fontSize: '11px',
     fontFamily: "'JetBrains Mono', monospace",
     fontWeight: 600,
     textTransform: 'uppercase' as const,
@@ -245,7 +245,7 @@ export function AIRewritePopup() {
             style={{
               padding: '10px 20px',
               borderBottom: '1px solid var(--border-color)',
-              fontSize: '10px',
+              fontSize: '11px',
               fontFamily: "'Inter', sans-serif",
               color: 'var(--text-muted)',
               display: 'flex',
@@ -257,7 +257,7 @@ export function AIRewritePopup() {
             <button
               style={{
                 padding: '2px 8px',
-                fontSize: '10px',
+                fontSize: '11px',
                 fontFamily: "'JetBrains Mono', monospace",
                 fontWeight: 600,
                 borderRadius: 'var(--btn-radius)',
@@ -332,7 +332,7 @@ export function AIRewritePopup() {
                   alignItems: 'center',
                   gap: '4px',
                   padding: '4px 8px',
-                  fontSize: '10px',
+                  fontSize: '11px',
                   fontFamily: "'JetBrains Mono', monospace",
                   fontWeight: 500,
                   borderRadius: 'var(--btn-radius)',
@@ -382,7 +382,7 @@ export function AIRewritePopup() {
                 </div>
                 <div
                   style={{
-                    fontSize: '10px',
+                    fontSize: '11px',
                     color: 'var(--text-muted)',
                     fontFamily: "'Inter', sans-serif",
                     marginBottom: '6px',
@@ -395,7 +395,7 @@ export function AIRewritePopup() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    fontSize: '10px',
+                    fontSize: '11px',
                     fontFamily: "'JetBrains Mono', monospace",
                     color: 'var(--accent-cyan)',
                   }}

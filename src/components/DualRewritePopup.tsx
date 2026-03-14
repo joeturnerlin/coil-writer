@@ -101,7 +101,7 @@ export function DualRewritePopup() {
   }
 
   const labelStyle: React.CSSProperties = {
-    fontSize: '10px',
+    fontSize: '11px',
     fontFamily: "'JetBrains Mono', monospace",
     fontWeight: 600,
     textTransform: 'uppercase',
@@ -122,12 +122,12 @@ export function DualRewritePopup() {
       {loading && (
         <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)' }}>
           <Loader2 size={16} style={{ animation: 'spin 1s linear infinite', margin: '0 auto 8px' }} />
-          <div style={{ fontSize: '10px' }}>Generating...</div>
+          <div style={{ fontSize: '11px' }}>Generating...</div>
         </div>
       )}
 
       {error && (
-        <div style={{ padding: '12px', fontSize: '10px', color: '#ef4444', background: 'rgba(239,68,68,0.1)', borderRadius: 'var(--card-radius)' }}>
+        <div style={{ padding: '12px', fontSize: '11px', color: '#ef4444', background: 'rgba(239,68,68,0.1)', borderRadius: 'var(--card-radius)' }}>
           {error}
         </div>
       )}
@@ -148,13 +148,13 @@ export function DualRewritePopup() {
           onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--accent-cyan)' }}
           onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)' }}
         >
-          <div style={{ fontSize: '11px', fontFamily: "'Courier Prime', monospace", color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '6px' }}>
+          <div style={{ fontSize: '12px', fontFamily: "'Courier Prime', monospace", color: 'var(--text-primary)', lineHeight: '1.6', marginBottom: '6px' }}>
             {s.text}
           </div>
-          <div style={{ fontSize: '9px', color: 'var(--text-muted)', fontFamily: "'Inter', sans-serif", marginBottom: '4px' }}>
+          <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontFamily: "'Inter', sans-serif", marginBottom: '4px' }}>
             {s.reasoning}
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '9px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-cyan)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", color: 'var(--accent-cyan)' }}>
             <Check size={10} /> Accept
           </div>
         </div>
@@ -187,7 +187,7 @@ export function DualRewritePopup() {
         {/* Original text */}
         <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-color)' }}>
           <div style={{ ...labelStyle, marginBottom: '4px' }}>Original</div>
-          <div style={{ fontSize: '11px', fontFamily: "'Courier Prime', monospace", color: 'var(--text-secondary)', lineHeight: '1.6' }}>
+          <div style={{ fontSize: '12px', fontFamily: "'Courier Prime', monospace", color: 'var(--text-secondary)', lineHeight: '1.6' }}>
             {rewriteSelection.text.length > 150 ? rewriteSelection.text.slice(0, 150) + '...' : rewriteSelection.text}
           </div>
         </div>
@@ -196,7 +196,7 @@ export function DualRewritePopup() {
         <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', gap: '8px', alignItems: 'center' }}>
           <input
             style={{
-              flex: 1, fontSize: '11px', fontFamily: "'Inter', sans-serif",
+              flex: 1, fontSize: '12px', fontFamily: "'Inter', sans-serif",
               padding: '8px 12px', borderRadius: 'var(--card-radius)', background: 'var(--bg-primary)',
               border: '1px solid var(--border-color)', color: 'var(--text-primary)',
             }}
@@ -209,7 +209,7 @@ export function DualRewritePopup() {
           <button
             style={{
               display: 'flex', alignItems: 'center', gap: '4px', padding: '8px 14px',
-              fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
+              fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 600,
               textTransform: 'uppercase', letterSpacing: '0.05em',
               borderRadius: 'var(--btn-radius)', cursor: 'pointer',
               background: 'var(--accent-cyan)', border: 'none', color: 'var(--bg-primary)',
@@ -233,14 +233,14 @@ export function DualRewritePopup() {
         {hasBothResults && (
           <div style={{ padding: '10px 20px', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <button
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, borderRadius: 'var(--btn-radius)', cursor: 'pointer', background: 'transparent', border: 'none', color: 'var(--text-muted)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, borderRadius: 'var(--btn-radius)', cursor: 'pointer', background: 'transparent', border: 'none', color: 'var(--text-muted)' }}
               onClick={() => setShowAll(!showAll)}
               type="button"
             >
               {showAll ? 'Show less' : 'Show all suggestions'}
             </button>
             <button
-              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', fontSize: '10px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, borderRadius: 'var(--btn-radius)', cursor: 'pointer', background: 'transparent', border: 'none', color: 'var(--text-muted)' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '4px', padding: '4px 8px', fontSize: '11px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 500, borderRadius: 'var(--btn-radius)', cursor: 'pointer', background: 'transparent', border: 'none', color: 'var(--text-muted)' }}
               onClick={() => {
                 setComparisonResultsA(null, null)
                 setComparisonResultsB(null, null)
