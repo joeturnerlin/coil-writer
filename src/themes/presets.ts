@@ -53,7 +53,7 @@ const recoil: ThemePreset = {
     '--accent-cyan': '#00f0ff',
     '--accent-cyan-dim': 'rgba(0, 240, 255, 0.08)',
     // Selection / caret
-    '--selection-bg': 'rgba(0, 240, 255, 0.12)',
+    '--selection-bg': 'rgba(0, 240, 255, 0.25)',
     '--selection-bg-focused': 'rgba(0, 240, 255, 0.25)',
     '--caret-color': '#00f0ff',
 
@@ -135,7 +135,7 @@ const muted: ThemePreset = {
     '--accent-cyan': '#d4a574',
     '--accent-cyan-dim': 'rgba(212, 165, 116, 0.1)',
     // Selection / caret
-    '--selection-bg': 'rgba(212, 165, 116, 0.2)',
+    '--selection-bg': 'rgba(212, 165, 116, 0.35)',
     '--selection-bg-focused': 'rgba(212, 165, 116, 0.35)',
     '--caret-color': '#d4a574',
 
@@ -217,7 +217,7 @@ const light: ThemePreset = {
     '--accent-cyan': '#0277bd',
     '--accent-cyan-dim': 'rgba(2, 119, 189, 0.08)',
     // Selection / caret
-    '--selection-bg': 'rgba(21, 101, 192, 0.15)',
+    '--selection-bg': 'rgba(21, 101, 192, 0.3)',
     '--selection-bg-focused': 'rgba(21, 101, 192, 0.3)',
     '--caret-color': '#0277bd',
 

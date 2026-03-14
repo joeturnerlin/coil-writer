@@ -171,9 +171,9 @@ export function DualRewritePopup() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid var(--border-color)' }}>
           <div>
             <div style={{ fontSize: '12px', fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-primary)' }}>
-              Model Comparison
+              Assistant
             </div>
-            <div style={{ ...labelStyle, marginTop: '2px' }}>{modelAName} vs {modelBName}</div>
+            <div style={{ ...labelStyle, marginTop: '2px' }}>Dual Model — {modelAName} + {modelBName}</div>
           </div>
           <button
             style={{ padding: '4px', background: 'none', border: 'none', cursor: 'pointer', borderRadius: 'var(--btn-radius)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}

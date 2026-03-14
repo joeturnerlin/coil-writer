@@ -187,7 +187,7 @@ export function AIRewritePopup() {
               color: 'var(--text-primary)',
             }}
           >
-            Rewrite
+            Assistant
           </div>
           <button
             style={{
