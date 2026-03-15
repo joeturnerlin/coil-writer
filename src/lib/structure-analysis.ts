@@ -99,6 +99,10 @@ export async function analyzeStructure(
   })
 
   // Parse AI response
+  if (!result.text) {
+    throw new Error('Empty response from structure analysis')
+  }
+
   let parsed: { mappings: BeatMapping[] }
   try {
     parsed = JSON.parse(result.text)
@@ -106,7 +110,11 @@ export async function analyzeStructure(
     // Try to extract JSON from response if wrapped in markdown
     const match = result.text.match(/\{[\s\S]*\}/)
     if (match) {
-      parsed = JSON.parse(match[0])
+      try {
+        parsed = JSON.parse(match[0])
+      } catch {
+        throw new Error('Failed to parse structure analysis response')
+      }
     } else {
       throw new Error('Failed to parse structure analysis response')
     }

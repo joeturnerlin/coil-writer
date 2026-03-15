@@ -5,7 +5,7 @@
  * Falls back to /api/analyze serverless proxy for "try free" mode.
  */
 
-import { getVoiceProfile, saveVoiceProfile } from './persistence'
+import { deleteVoiceProfile, getVoiceProfile, saveVoiceProfile } from './persistence'
 import type { VoiceProfile } from './voice-profile'
 import { hashScript } from './voice-profile'
 
@@ -134,7 +134,18 @@ export async function analyzeScript(
   // Check cache first
   const cached = await getVoiceProfile(sourceHash)
   if (cached) {
-    return JSON.parse(cached) as VoiceProfile
+    try {
+      const parsed = JSON.parse(cached)
+      // Validate cached data has required structure
+      if (parsed?.characters && Array.isArray(parsed.characters) && parsed.characters.length > 0) {
+        return parsed as VoiceProfile
+      }
+      // Bad cache — delete it
+      await deleteVoiceProfile(sourceHash)
+    } catch {
+      // Corrupt cache — delete it
+      await deleteVoiceProfile(sourceHash)
+    }
   }
 
   const response = await fetch(
