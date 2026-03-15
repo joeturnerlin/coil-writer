@@ -115,7 +115,7 @@ export async function analyzeScript(
         systemInstruction: { parts: [{ text: ANALYSIS_SYSTEM_PROMPT }] },
         contents: [{ parts: [{ text: buildAnalysisUserPrompt(scriptContent) }] }],
         generationConfig: {
-          maxOutputTokens: 4096,
+          maxOutputTokens: 16384,
           responseMimeType: 'application/json',
         },
       }),

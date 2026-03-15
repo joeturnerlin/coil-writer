@@ -336,34 +336,72 @@ body.light .cm-annotation-mark {
   transition: width 0.2s ease, opacity 0.2s ease;
 }
 
-/* ── Scanline animation for script analysis ── */
-@keyframes scanline-sweep {
+/* ── Analysis pulse wave ── */
+@keyframes analysis-pulse {
   0% {
-    top: 0;
-    opacity: 0;
-  }
-  5% {
-    opacity: 1;
-  }
-  95% {
-    opacity: 1;
+    transform: translateX(-100%);
   }
   100% {
-    top: 100%;
-    opacity: 0;
+    transform: translateX(100%);
+  }
+}
+
+@keyframes analysis-glow {
+  0%, 100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.35;
   }
 }
 
 .analysis-scanline {
-  position: absolute;
+  position: fixed;
+  top: 44px;
   left: 0;
   right: 0;
-  height: 2px;
-  background: var(--accent-blue, #1565c0);
-  opacity: 0.2;
+  bottom: 0;
   pointer-events: none;
   z-index: 10;
-  animation: scanline-sweep 4s linear infinite;
+  overflow: hidden;
+  animation: analysis-glow 2s ease-in-out infinite;
+}
+
+.analysis-scanline::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    transparent 30%,
+    var(--accent-cyan, #00f0ff) 50%,
+    transparent 70%,
+    transparent 100%
+  );
+  opacity: 0.08;
+  animation: analysis-pulse 2.5s ease-in-out infinite;
+}
+
+.analysis-scanline::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent-cyan, #00f0ff) 20%,
+    var(--accent-cyan, #00f0ff) 80%,
+    transparent 100%
+  );
+  opacity: 0.4;
+  animation: analysis-glow 2s ease-in-out infinite;
 }
 
 /* ── Page break indicator colors ── */
