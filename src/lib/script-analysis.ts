@@ -66,24 +66,56 @@ ${scriptContent}
 }
 
 function parseProfileResponse(text: string, sourceHash: string, modelId: string): VoiceProfile {
+  if (!text) throw new Error('Empty response from AI — no text returned')
+
   // Strip markdown fences if present
   let cleaned = text.trim()
   cleaned = cleaned.replace(/^```json?\n?/i, '').replace(/\n?```$/i, '')
 
-  const parsed = JSON.parse(cleaned)
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(cleaned)
+  } catch (e) {
+    // Try to recover truncated JSON by closing brackets
+    try {
+      parsed = JSON.parse(cleaned + ']}')
+    } catch {
+      try {
+        parsed = JSON.parse(cleaned + '"]}]}')
+      } catch {
+        throw new Error(`Failed to parse AI response as JSON: ${(e as Error).message}`)
+      }
+    }
+  }
 
   // Validate basic structure
   if (!parsed.characters || !Array.isArray(parsed.characters)) {
     throw new Error('Invalid profile: missing characters array')
   }
 
+  // Normalize each character — ensure required arrays exist
+  const characters = (parsed.characters as Record<string, unknown>[]).map((c) => ({
+    name: String(c.name || 'UNKNOWN'),
+    forbidden_patterns: Array.isArray(c.forbidden_patterns) ? c.forbidden_patterns : [],
+    vocabulary: Array.isArray(c.vocabulary) ? c.vocabulary : [],
+    syntax: Array.isArray(c.syntax) ? c.syntax : [],
+    rhythm: c.rhythm && typeof c.rhythm === 'object'
+      ? c.rhythm as { length_bucket: string; patterns: unknown[] }
+      : { length_bucket: 'moderate', patterns: [] },
+    rhetoric: Array.isArray(c.rhetoric) ? c.rhetoric : [],
+    profanity_register: String(c.profanity_register || 'none'),
+    formality_axis: String(c.formality_axis || 'neutral'),
+  }))
+
   return {
     schema_version: '1.0.0',
     source_hash: sourceHash,
     generated_at: new Date().toISOString(),
     model_id: modelId,
-    characters: parsed.characters,
-    convergence_warnings: parsed.convergence_warnings || [],
+    characters: characters as VoiceProfile['characters'],
+    convergence_warnings: Array.isArray(parsed.convergence_warnings)
+      ? parsed.convergence_warnings
+      : [],
   }
 }
 
