@@ -66,6 +66,8 @@ For each character, extract:
 7. FORMALITY_AXIS: street / casual / neutral / formal / ornate.
 
 Return valid JSON: {"schema_version":"1.0.0","characters":[...],"convergence_warnings":[...]}
+Each character object must have: name, forbidden_patterns, vocabulary, syntax, rhythm (with length_bucket and patterns), rhetoric, profanity_register, formality_axis.
+Each pattern must have: pattern (string), evidence (quoted line).
 No markdown fences.
 
 <screenplay>

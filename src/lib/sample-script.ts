@@ -9,7 +9,7 @@ Draft date: 2026
 
 INT. OFFICE LOBBY - MORNING
 
-A sleek corporate lobby. MARCUS CHEN, 40s, sharp suit, sharper eyes, checks his watch. He's been waiting.
+A sleek corporate lobby. MARCUS CHEN, 40s, sharp suit and RED TIE, sharper eyes, checks his watch. He's been waiting.
 
 MARCUS
 I've been here forty minutes. That's not a mistake. That's a message.
@@ -24,7 +24,7 @@ I'm sure they are.
 
 INT. BOARDROOM - CONTINUOUS
 
-Ten faces around a polished table. VICTOR HALL, 60s, silver-haired patriarch, sits at the head.
+Ten faces around a polished table. VICTOR HALL, 60s, silver-haired patriarch, sits at the head. Marcus sets his GOLD PEN on the table.
 
 VICTOR
 You wanted this meeting, Marcus. You have fifteen minutes.
@@ -55,7 +55,7 @@ I have enough to make your lawyers nervous. That's all I need.
 
 EXT. PARKING GARAGE - LATER
 
-Marcus and Dana walk to their cars. The tension bleeds out.
+Marcus and Dana walk to their cars. Marcus adjusts his BLUE TIE. The tension bleeds out.
 
 DANA
 I was terrified in there. My heart was pounding the whole time.
@@ -76,7 +76,7 @@ INT. MARCUS'S CAR - NIGHT
 
 Marcus sits alone. Engine off. Streetlight through the windshield.
 
-He pulls out his phone. Types a message. Deletes it. Types again.
+He reaches for the gold pen — but his pockets are empty. He pulls out his phone. Types a message. Deletes it. Types again.
 
 MARCUS (V.O.)
 You know, the real lesson here is that power corrupts everyone eventually. That's really what this whole thing is about — the corruption of good intentions.

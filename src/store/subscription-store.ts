@@ -100,7 +100,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       canUse: (feature: GatedFeature) => {
         const s = get()
         if (s.tier === 'pro') return true
-        if (s.byok && feature === 'rewrite') return true
+        if (s.byok) return true
         const limit = LIMITS[feature]
         if (limit.free === 0) return false
         const u = resetIfNeeded(s.usage)
@@ -119,7 +119,7 @@ export const useSubscriptionStore = create<SubscriptionState>()(
       remainingUses: (feature: GatedFeature) => {
         const s = get()
         if (s.tier === 'pro') return Number.POSITIVE_INFINITY
-        if (s.byok && feature === 'rewrite') return Number.POSITIVE_INFINITY
+        if (s.byok) return Number.POSITIVE_INFINITY
         const limit = LIMITS[feature]
         if (limit.free === 0) return 0
         const u = resetIfNeeded(s.usage)

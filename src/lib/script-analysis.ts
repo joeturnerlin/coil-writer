@@ -95,13 +95,14 @@ function parseProfileResponse(text: string, sourceHash: string, modelId: string)
 
   // Normalize each character — ensure required arrays exist
   const characters = (parsed.characters as Record<string, unknown>[]).map((c) => ({
-    name: String(c.name || 'UNKNOWN'),
+    name: String(c.name || c.character_name || c.character || 'UNKNOWN'),
     forbidden_patterns: Array.isArray(c.forbidden_patterns) ? c.forbidden_patterns : [],
     vocabulary: Array.isArray(c.vocabulary) ? c.vocabulary : [],
     syntax: Array.isArray(c.syntax) ? c.syntax : [],
-    rhythm: c.rhythm && typeof c.rhythm === 'object'
-      ? c.rhythm as { length_bucket: string; patterns: unknown[] }
-      : { length_bucket: 'moderate', patterns: [] },
+    rhythm:
+      c.rhythm && typeof c.rhythm === 'object'
+        ? (c.rhythm as { length_bucket: string; patterns: unknown[] })
+        : { length_bucket: 'moderate', patterns: [] },
     rhetoric: Array.isArray(c.rhetoric) ? c.rhetoric : [],
     profanity_register: String(c.profanity_register || 'none'),
     formality_axis: String(c.formality_axis || 'neutral'),
@@ -113,9 +114,7 @@ function parseProfileResponse(text: string, sourceHash: string, modelId: string)
     generated_at: new Date().toISOString(),
     model_id: modelId,
     characters: characters as VoiceProfile['characters'],
-    convergence_warnings: Array.isArray(parsed.convergence_warnings)
-      ? parsed.convergence_warnings
-      : [],
+    convergence_warnings: Array.isArray(parsed.convergence_warnings) ? parsed.convergence_warnings : [],
   }
 }
 
@@ -140,6 +139,7 @@ export async function analyzeScript(
         // Normalize cached characters (old cache may have missing fields)
         parsed.characters = parsed.characters.map((c: Record<string, unknown>) => ({
           ...c,
+          name: String(c.name || c.character_name || c.character || 'UNKNOWN'),
           forbidden_patterns: Array.isArray(c.forbidden_patterns) ? c.forbidden_patterns : [],
           vocabulary: Array.isArray(c.vocabulary) ? c.vocabulary : [],
           syntax: Array.isArray(c.syntax) ? c.syntax : [],
@@ -149,7 +149,13 @@ export async function analyzeScript(
           formality_axis: c.formality_axis || 'neutral',
         }))
         if (!Array.isArray(parsed.convergence_warnings)) parsed.convergence_warnings = []
-        return parsed as VoiceProfile
+        // Invalidate cache if all names are UNKNOWN (bad prior extraction)
+        const allUnknown = parsed.characters.every((c: Record<string, unknown>) => c.name === 'UNKNOWN')
+        if (allUnknown) {
+          await deleteVoiceProfile(sourceHash)
+        } else {
+          return parsed as VoiceProfile
+        }
       }
       await deleteVoiceProfile(sourceHash)
     } catch {
@@ -202,9 +208,14 @@ export async function analyzeScriptViaProxy(scriptContent: string, signal?: Abor
     try {
       const parsed = JSON.parse(cached)
       if (parsed?.characters && Array.isArray(parsed.characters)) {
-        return normalizeProfile(parsed)
+        const normalized = normalizeProfile(parsed)
+        // Invalidate cache if all names are UNKNOWN (bad prior extraction)
+        const allUnknown = normalized.characters.every((c) => c.name === 'UNKNOWN')
+        if (!allUnknown) return normalized
+        await deleteVoiceProfile(sourceHash)
+      } else {
+        await deleteVoiceProfile(sourceHash)
       }
-      await deleteVoiceProfile(sourceHash)
     } catch {
       await deleteVoiceProfile(sourceHash)
     }
@@ -244,14 +255,15 @@ function normalizeProfile(parsed: Record<string, unknown>): VoiceProfile {
     generated_at: String(parsed.generated_at || ''),
     model_id: String(parsed.model_id || ''),
     characters: chars.map((c: Record<string, unknown>) => ({
-      name: String(c.name || 'UNKNOWN'),
+      name: String(c.name || c.character_name || c.character || 'UNKNOWN'),
       forbidden_patterns: Array.isArray(c.forbidden_patterns) ? c.forbidden_patterns : [],
       vocabulary: Array.isArray(c.vocabulary) ? c.vocabulary : [],
       syntax: Array.isArray(c.syntax) ? c.syntax : [],
       rhetoric: Array.isArray(c.rhetoric) ? c.rhetoric : [],
-      rhythm: c.rhythm && typeof c.rhythm === 'object'
-        ? c.rhythm as VoiceProfile['characters'][0]['rhythm']
-        : { length_bucket: 'moderate' as const, patterns: [] },
+      rhythm:
+        c.rhythm && typeof c.rhythm === 'object'
+          ? (c.rhythm as VoiceProfile['characters'][0]['rhythm'])
+          : { length_bucket: 'moderate' as const, patterns: [] },
       profanity_register: (c.profanity_register || 'none') as VoiceProfile['characters'][0]['profanity_register'],
       formality_axis: (c.formality_axis || 'neutral') as VoiceProfile['characters'][0]['formality_axis'],
     })),

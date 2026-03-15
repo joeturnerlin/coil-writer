@@ -6,7 +6,6 @@
  * Click scrolls editor to scene. No drag-to-rearrange.
  */
 
-import { EditorView } from '@codemirror/view'
 import { useCallback, useState } from 'react'
 import type { SceneBlock } from '../lib/scene-model'
 import { useEditorStore } from '../store/editor-store'
@@ -39,13 +38,9 @@ export function BeatBoard() {
     (scene: SceneBlock) => {
       const view = viewRef?.current
       if (!view) return
-      view.dispatch({
-        selection: { anchor: scene.from },
-        effects: EditorView.scrollIntoView(scene.from, { y: 'start', yMargin: 10 }),
-      })
-      const scroller = view.scrollDOM
-      scroller.style.scrollBehavior = 'smooth'
-      setTimeout(() => { scroller.style.scrollBehavior = '' }, 500)
+      view.dispatch({ selection: { anchor: scene.from } })
+      const lineBlock = view.lineBlockAt(scene.from)
+      view.scrollDOM.scrollTo({ top: lineBlock.top - 10, behavior: 'smooth' })
       view.focus()
     },
     [viewRef],

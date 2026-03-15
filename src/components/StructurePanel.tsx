@@ -5,7 +5,6 @@
  * scene cells with beat mappings, gap warnings, and timing estimates.
  */
 
-import { EditorView } from '@codemirror/view'
 import { useCallback, useRef, useState } from 'react'
 import type { StructureFramework } from '../editor/types'
 import type { SceneBlock } from '../lib/scene-model'
@@ -91,13 +90,9 @@ export function StructurePanel() {
     (scene: SceneBlock) => {
       const view = viewRef?.current
       if (!view) return
-      view.dispatch({
-        selection: { anchor: scene.from },
-        effects: EditorView.scrollIntoView(scene.from, { y: 'start', yMargin: 10 }),
-      })
-      const scroller = view.scrollDOM
-      scroller.style.scrollBehavior = 'smooth'
-      setTimeout(() => { scroller.style.scrollBehavior = '' }, 500)
+      view.dispatch({ selection: { anchor: scene.from } })
+      const lineBlock = view.lineBlockAt(scene.from)
+      view.scrollDOM.scrollTo({ top: lineBlock.top - 10, behavior: 'smooth' })
       view.focus()
     },
     [viewRef],

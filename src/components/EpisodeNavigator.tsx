@@ -1,4 +1,3 @@
-import { EditorView } from '@codemirror/view'
 import { ChevronLeft } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import type { Episode } from '../editor/types'
@@ -113,13 +112,9 @@ export function EpisodeNavigator() {
   const scrollToPosition = (pos: number) => {
     const view = viewRef?.current
     if (!view) return
-    view.dispatch({
-      selection: { anchor: pos },
-      effects: EditorView.scrollIntoView(pos, { y: 'start', yMargin: 10 }),
-    })
-    const scroller = view.scrollDOM
-    scroller.style.scrollBehavior = 'smooth'
-    setTimeout(() => { scroller.style.scrollBehavior = '' }, 500)
+    view.dispatch({ selection: { anchor: pos } })
+    const lineBlock = view.lineBlockAt(pos)
+    view.scrollDOM.scrollTo({ top: lineBlock.top - 10, behavior: 'smooth' })
     view.focus()
   }
 

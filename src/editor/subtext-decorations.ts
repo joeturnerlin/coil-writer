@@ -22,6 +22,71 @@ export const setSubtextFlags = StateEffect.define<SubtextFlag[]>()
 /** Clear all subtext flags */
 export const clearSubtextFlags = StateEffect.define<void>()
 
+// ── Popover ──────────────────────────────────────────────
+
+let activePopover: HTMLElement | null = null
+
+const CATEGORY_LABELS: Record<string, string> = {
+  'literal-emotion': 'Literal Emotion',
+  'exposition-dump': 'Exposition Dump',
+  'thematic-broadcasting': 'Thematic Broadcasting',
+}
+
+function showSubtextPopover(flag: SubtextFlag, anchor: HTMLElement) {
+  if (activePopover) {
+    activePopover.remove()
+    activePopover = null
+  }
+
+  const popover = document.createElement('div')
+  popover.style.cssText = `
+    position: fixed; z-index: 60; width: 280px;
+    background: var(--bg-tertiary, #1a1a2e); color: var(--text-primary, #e0e0e0);
+    border: 1px solid var(--border-light, #333); border-radius: 6px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4); font-family: 'Inter', sans-serif;
+    padding: 12px; font-size: 11px; line-height: 1.5;
+  `
+
+  const rect = anchor.getBoundingClientRect()
+  popover.style.left = `${rect.right + 12}px`
+  popover.style.top = `${rect.top - 8}px`
+
+  const label = CATEGORY_LABELS[flag.category] || flag.category
+  const conf = flag.confidence === 'high' ? '#ef5350' : '#ff9800'
+
+  popover.innerHTML = `
+    <div style="display:flex; align-items:center; gap:6px; margin-bottom:8px;">
+      <span style="font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:${conf};">${label}</span>
+      <span style="font-size:9px; padding:1px 6px; border-radius:3px; background:${conf}22; color:${conf}; font-weight:600;">${flag.confidence}</span>
+    </div>
+    <div style="color:var(--text-secondary, #aaa); margin-bottom:8px;">${flag.explanation}</div>
+    ${flag.suggestion ? `<div style="padding:8px; border-radius:4px; background:var(--bg-hover, #222); font-style:italic; color:var(--text-muted, #888); font-size:10px;"><span style="font-style:normal; font-weight:600; color:var(--text-secondary, #aaa);">Try:</span> ${flag.suggestion}</div>` : ''}
+  `
+
+  document.body.appendChild(popover)
+  activePopover = popover
+
+  // Clamp to viewport
+  requestAnimationFrame(() => {
+    const pr = popover.getBoundingClientRect()
+    if (pr.right > window.innerWidth - 8) {
+      popover.style.left = `${rect.left - pr.width - 12}px`
+    }
+    if (pr.bottom > window.innerHeight - 8) {
+      popover.style.top = `${window.innerHeight - pr.height - 8}px`
+    }
+  })
+
+  const dismiss = (e: MouseEvent) => {
+    if (!popover.contains(e.target as Node)) {
+      popover.remove()
+      activePopover = null
+      document.removeEventListener('click', dismiss)
+    }
+  }
+  setTimeout(() => document.addEventListener('click', dismiss), 0)
+}
+
 // ── Gutter Marker ────────────────────────────────────────
 
 class SubtextDot extends GutterMarker {
@@ -35,9 +100,14 @@ class SubtextDot extends GutterMarker {
     el.style.height = '6px'
     el.style.borderRadius = '50%'
     el.style.margin = 'auto'
+    el.style.cursor = 'pointer'
     el.style.background = 'var(--subtext-dot)'
     el.style.opacity = this.flag.confidence === 'high' ? '0.9' : '0.5'
     el.title = `${this.flag.category}: ${this.flag.explanation}`
+    el.addEventListener('click', (e) => {
+      e.stopPropagation()
+      showSubtextPopover(this.flag, el)
+    })
     return el
   }
 
