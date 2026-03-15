@@ -2,16 +2,16 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { search, searchKeymap } from '@codemirror/search'
 import { Compartment, EditorState, type Extension } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
+import { useRevisionStore } from '../store/revision-store'
 import { annotationField } from './annotation-state'
 import { characterAutocomplete } from './character-autocomplete'
-import { revisionGutterExtension, markLines } from './revision-gutter'
-import { sceneNumberGutterExtension } from './scene-number-gutter'
-import { pageBreakLinesExtension } from './page-break-lines'
-import { useRevisionStore } from '../store/revision-store'
 import { fountainLineDecorations, fountainMarkDecorations } from './fountain-decorations'
 import { fountainKeymap } from './fountain-keymap'
 import { fountainLanguage } from './fountain-language'
 import { fountainBaseTheme, fountainDarkTheme, fountainLightTheme } from './fountain-theme'
+import { pageBreakLinesExtension } from './page-break-lines'
+import { markLines, revisionGutterExtension } from './revision-gutter'
+import { sceneNumberGutterExtension } from './scene-number-gutter'
 import type { EditorMode } from './types'
 
 /**
@@ -30,6 +30,11 @@ export const readOnlyCompartment = new Compartment()
  */
 export const fontSizeCompartment = new Compartment()
 
+/**
+ * Subtext compartment — holds subtext gutter decorations in Analyze mode, empty in Write mode.
+ */
+export const subtextCompartment = new Compartment()
+
 function fontSizeTheme(size: number) {
   return EditorView.theme({
     '&': { fontSize: `${size}px` },
@@ -41,13 +46,13 @@ function fontSizeTheme(size: number) {
  * Creates the full set of CM6 extensions for the Fountain editor.
  *
  * @param theme - 'dark' or 'light'
- * @param mode - 'edit' or 'analyze'
+ * @param mode - 'write' or 'analyze'
  * @param onUpdate - callback fired on every document update (for stats, etc.)
  * @returns Extension array to pass to EditorState.create() or useCodeMirror()
  */
 export function createEditorExtensions(
   theme: 'dark' | 'light' = 'dark',
-  mode: EditorMode = 'edit',
+  mode: EditorMode = 'write',
   fontSize = 14,
   onUpdate?: (update: { doc: string; cursorLine: number; selection: { from: number; to: number } }) => void,
 ): Extension[] {
@@ -80,7 +85,8 @@ export function createEditorExtensions(
     search(),
     characterAutocomplete(),
     EditorView.lineWrapping,
-    readOnlyCompartment.of(EditorState.readOnly.of(mode === 'annotate')),
+    readOnlyCompartment.of(EditorState.readOnly.of(false)),
+    subtextCompartment.of([]),
 
     // Update listener — pushes derived data out to React/Zustand
     ...(onUpdate

@@ -1,14 +1,20 @@
-import { EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { useCallback, useEffect, useRef } from 'react'
 import { annotationField } from '../editor/annotation-state'
-import { createEditorExtensions, fontSizeCompartment, readOnlyCompartment, themeCompartment } from '../editor/editor-setup'
+import {
+  createEditorExtensions,
+  fontSizeCompartment,
+  subtextCompartment,
+  themeCompartment,
+} from '../editor/editor-setup'
 import { fountainDarkTheme, fountainLightTheme } from '../editor/fountain-theme'
+import { subtextExtension } from '../editor/subtext-decorations'
 import { useCodeMirror } from '../editor/use-codemirror'
 import { saveToDB } from '../lib/persistence'
 import { useAIStore } from '../store/ai-store'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
+import { useScriptStore } from '../store/script-store'
 import { useSettingsStore } from '../store/settings-store'
 import { HeroSection } from './HeroSection'
 
@@ -33,6 +39,9 @@ export function EditorPanel(_props: EditorPanelProps) {
     ({ doc, cursorLine, selection }: { doc: string; cursorLine: number; selection: { from: number; to: number } }) => {
       setCursorLine(cursorLine)
       updateContent(doc)
+
+      // Update scene model (debounced internally by script-store)
+      useScriptStore.getState().updateFromContent(doc)
 
       // Compute stats
       const lines = doc.split('\n')
@@ -113,7 +122,7 @@ export function EditorPanel(_props: EditorPanelProps) {
     [setStats, setCursorLine, updateContent],
   )
 
-  const extensions = createEditorExtensions(theme, 'edit', 14, onUpdate)
+  const extensions = createEditorExtensions(theme, 'write', 14, onUpdate)
   const viewRef = useCodeMirror(containerRef, content ?? '', extensions)
 
   // Load new content into CM6 when a different file is opened
@@ -125,8 +134,17 @@ export function EditorPanel(_props: EditorPanelProps) {
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: content },
       })
+      // Force scene model update on file open (onUpdate only fires on edits)
+      useScriptStore.getState().forceUpdate(content)
     }
   }, [fileName, content, viewRef])
+
+  // Also populate scene model on initial load (auto-recovery)
+  useEffect(() => {
+    if (content) {
+      useScriptStore.getState().forceUpdate(content)
+    }
+  }, [])
 
   // Theme switching via Compartment
   useEffect(() => {
@@ -138,12 +156,12 @@ export function EditorPanel(_props: EditorPanelProps) {
     })
   }, [theme, viewRef])
 
-  // Mode switching via readOnlyCompartment
+  // Subtext gutter — only active in Analyze mode
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
     view.dispatch({
-      effects: readOnlyCompartment.reconfigure(EditorState.readOnly.of(editorMode === 'annotate')),
+      effects: subtextCompartment.reconfigure(editorMode === 'analyze' ? subtextExtension : []),
     })
   }, [editorMode, viewRef])
 
@@ -161,12 +179,12 @@ export function EditorPanel(_props: EditorPanelProps) {
       const view = viewRef.current
       if (!view) return
       const currentMode = useSettingsStore.getState().editorMode
-      if (currentMode !== 'annotate') return
+      if (currentMode !== 'analyze') return
       const sel = view.state.selection.main
       if (sel.from === sel.to) return
       const doc = view.state.doc.toString()
       const selectedText = doc.slice(sel.from, sel.to)
-      if (selectedText.trim().length < 3) return
+      if (selectedText.trim().length < 20) return
 
       // Open AI rewrite popup directly
       const contextStart = Math.max(0, sel.from - 500)

@@ -203,7 +203,9 @@ body.light ::-webkit-scrollbar-thumb:hover {
 
 /* ── Print / PDF export ── */
 @media print {
-  html, body, #root {
+  html,
+  body,
+  #root {
     height: auto !important;
     overflow: visible !important;
     background: white !important;
@@ -212,11 +214,11 @@ body.light ::-webkit-scrollbar-thumb:hover {
 
   /* Hide all UI chrome — keep only the editor content */
   /* Toolbar, stats bar, episode nav, annotation panel, popups, overlays */
-  #root > div > div:first-child, /* Toolbar */
-  #root > div > div:last-of-type:not(.flex), /* StatsBar */
-  .fixed, /* All fixed overlays (popups, dialogs, type indicator) */
-  .cm-panels, /* CM6 search panel */
-  .cm-gutters, /* Line numbers */
+  #root > div > div:first-child /* Toolbar */,
+  #root > div > div:last-of-type:not(.flex) /* StatsBar */,
+  .fixed /* All fixed overlays (popups, dialogs, type indicator) */,
+  .cm-panels /* CM6 search panel */,
+  .cm-gutters /* Line numbers */,
   .cm-cursorLayer,
   .cm-selectionLayer {
     display: none !important;
@@ -336,10 +338,20 @@ body.light .cm-annotation-mark {
 
 /* ── Scanline animation for script analysis ── */
 @keyframes scanline-sweep {
-  0% { top: 0; opacity: 0; }
-  5% { opacity: 1; }
-  95% { opacity: 1; }
-  100% { top: 100%; opacity: 0; }
+  0% {
+    top: 0;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
 }
 
 .analysis-scanline {

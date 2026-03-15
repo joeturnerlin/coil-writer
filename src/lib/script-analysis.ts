@@ -5,9 +5,9 @@
  * Falls back to /api/analyze serverless proxy for "try free" mode.
  */
 
+import { getVoiceProfile, saveVoiceProfile } from './persistence'
 import type { VoiceProfile } from './voice-profile'
 import { hashScript } from './voice-profile'
-import { getVoiceProfile, saveVoiceProfile } from './persistence'
 
 export type AnalysisPhase =
   | { status: 'idle' }
@@ -94,7 +94,7 @@ function parseProfileResponse(text: string, sourceHash: string, modelId: string)
 export async function analyzeScript(
   scriptContent: string,
   apiKey: string,
-  model: string = 'gemini-2.5-pro',
+  model = 'gemini-2.5-pro',
   signal?: AbortSignal,
 ): Promise<VoiceProfile> {
   const sourceHash = await hashScript(scriptContent)
@@ -142,10 +142,7 @@ export async function analyzeScript(
 /**
  * Analyze via the server proxy (for "try free" mode without user API key).
  */
-export async function analyzeScriptViaProxy(
-  scriptContent: string,
-  signal?: AbortSignal,
-): Promise<VoiceProfile> {
+export async function analyzeScriptViaProxy(scriptContent: string, signal?: AbortSignal): Promise<VoiceProfile> {
   const sourceHash = await hashScript(scriptContent)
 
   const cached = await getVoiceProfile(sourceHash)

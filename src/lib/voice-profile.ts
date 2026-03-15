@@ -62,11 +62,15 @@ export function buildCompactProfile(
   profile: VoiceProfile | null,
   selectedText: string,
   surroundingContext: string,
+  overrides?: Record<string, Partial<CharacterProfile>>,
 ): string {
   if (!profile || profile.characters.length === 0) return ''
 
   const combinedText = selectedText + ' ' + surroundingContext
-  const activeCharacters = profile.characters.filter((c) => {
+  const characters = overrides
+    ? profile.characters.map((c) => (overrides[c.name] ? ({ ...c, ...overrides[c.name] } as CharacterProfile) : c))
+    : profile.characters
+  const activeCharacters = characters.filter((c) => {
     const regex = new RegExp(`\\b${c.name}\\b`, 'i')
     return regex.test(combinedText)
   })
@@ -83,11 +87,21 @@ export function buildCompactProfile(
       }
 
       if (c.vocabulary.length > 0) {
-        parts.push(`Vocabulary: ${c.vocabulary.slice(0, 3).map((v) => `"${v.pattern}"`).join(', ')}.`)
+        parts.push(
+          `Vocabulary: ${c.vocabulary
+            .slice(0, 3)
+            .map((v) => `"${v.pattern}"`)
+            .join(', ')}.`,
+        )
       }
 
       if (c.rhetoric.length > 0) {
-        parts.push(`Rhetoric: ${c.rhetoric.slice(0, 2).map((r) => r.pattern).join('; ')}.`)
+        parts.push(
+          `Rhetoric: ${c.rhetoric
+            .slice(0, 2)
+            .map((r) => r.pattern)
+            .join('; ')}.`,
+        )
       }
 
       parts.push(`Profanity: ${c.profanity_register}.`)

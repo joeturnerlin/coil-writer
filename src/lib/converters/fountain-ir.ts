@@ -128,7 +128,7 @@ export function irToFountain(ir: ScriptIR): string {
   let prevType: ElementType | null = null
 
   for (const el of ir.elements) {
-    let text = el.spans ? spansToFountain(el.text, el.spans) : el.text
+    const text = el.spans ? spansToFountain(el.text, el.spans) : el.text
 
     // Add blank lines between elements where Fountain requires them
     if (prevType !== null) {
@@ -143,8 +143,7 @@ export function irToFountain(ir: ScriptIR): string {
         el.type === 'general' ||
         el.type === 'boneyard' ||
         // Blank line before action that follows dialogue/parenthetical
-        ((el.type === 'action') &&
-          (prevType === 'dialogue' || prevType === 'parenthetical')) ||
+        (el.type === 'action' && (prevType === 'dialogue' || prevType === 'parenthetical')) ||
         // Blank line between action blocks
         (el.type === 'action' && prevType === 'action')
 

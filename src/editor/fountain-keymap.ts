@@ -213,30 +213,44 @@ export const fountainKeymap: KeyBinding[] = [
   // ── Cmd+1-7: Direct element assignment (Final Draft convention) ──
   {
     key: 'Mod-1',
-    run(view) { return forceElementType(view, 'scene-heading') },
+    run(view) {
+      return forceElementType(view, 'scene-heading')
+    },
   },
   {
     key: 'Mod-2',
-    run(view) { return forceElementType(view, 'action') },
+    run(view) {
+      return forceElementType(view, 'action')
+    },
   },
   {
     key: 'Mod-3',
-    run(view) { return forceElementType(view, 'character') },
+    run(view) {
+      return forceElementType(view, 'character')
+    },
   },
   {
     key: 'Mod-4',
-    run(view) { return forceElementType(view, 'parenthetical') },
+    run(view) {
+      return forceElementType(view, 'parenthetical')
+    },
   },
   {
     key: 'Mod-5',
-    run(view) { return forceElementType(view, 'dialogue') },
+    run(view) {
+      return forceElementType(view, 'dialogue')
+    },
   },
   {
     key: 'Mod-6',
-    run(view) { return forceElementType(view, 'transition') },
+    run(view) {
+      return forceElementType(view, 'transition')
+    },
   },
   {
     key: 'Mod-7',
-    run(view) { return forceElementType(view, 'shot') },
+    run(view) {
+      return forceElementType(view, 'shot')
+    },
   },
 ]

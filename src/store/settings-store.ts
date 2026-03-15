@@ -1,12 +1,11 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import type { EditorMode } from '../editor/types'
+import type { ActiveOverlay, AnalyzeLeftTab, EditorMode, StructureFramework } from '../editor/types'
 import type { PresetId } from '../themes/presets'
 import { applyPreset, getPreset } from '../themes/presets'
 
 interface SettingsState {
   preset: PresetId
-  /** Derived from preset.isDark — components that need 'dark'|'light' read this */
   theme: 'dark' | 'light'
   fontSize: number
   zoomLevel: number
@@ -14,8 +13,13 @@ interface SettingsState {
   editorMode: EditorMode
   showAnnotations: boolean
 
+  // New fields
+  activeOverlay: ActiveOverlay
+  structureFramework: StructureFramework
+  activeLeftTab: AnalyzeLeftTab
+  onboardingComplete: boolean
+
   setPreset: (preset: PresetId) => void
-  /** Legacy toggle — cycles: recoil → muted → light → recoil */
   toggleTheme: () => void
   setFontSize: (size: number) => void
   zoomIn: () => void
@@ -24,12 +28,15 @@ interface SettingsState {
   toggleEpisodeNav: () => void
   setEditorMode: (mode: EditorMode) => void
   toggleAnnotations: () => void
+
+  setActiveOverlay: (overlay: ActiveOverlay) => void
+  setStructureFramework: (fw: StructureFramework) => void
+  setActiveLeftTab: (tab: AnalyzeLeftTab) => void
+  setOnboardingComplete: (complete: boolean) => void
 }
 
 const CYCLE_ORDER: PresetId[] = ['recoil', 'muted', 'light']
 
-// Apply default preset immediately so CSS vars exist before first render.
-// onRehydrateStorage will override with the persisted preset once hydration completes.
 applyPreset(getPreset('recoil'))
 
 export const useSettingsStore = create<SettingsState>()(
@@ -38,10 +45,15 @@ export const useSettingsStore = create<SettingsState>()(
       preset: 'recoil',
       theme: 'dark',
       fontSize: 16,
-      zoomLevel: 100,
+      zoomLevel: 120,
       showEpisodeNav: true,
-      editorMode: 'edit' as const,
+      editorMode: 'write' as EditorMode,
       showAnnotations: false,
+
+      activeOverlay: 'none' as ActiveOverlay,
+      structureFramework: 'save-the-cat' as StructureFramework,
+      activeLeftTab: 'structure' as AnalyzeLeftTab,
+      onboardingComplete: false,
 
       setPreset: (preset) => {
         const p = getPreset(preset)
@@ -59,28 +71,44 @@ export const useSettingsStore = create<SettingsState>()(
       setFontSize: (fontSize) => set({ fontSize: Math.max(10, Math.min(24, fontSize)) }),
       zoomIn: () => set((s) => ({ zoomLevel: Math.min(200, s.zoomLevel + 10) })),
       zoomOut: () => set((s) => ({ zoomLevel: Math.max(70, s.zoomLevel - 10) })),
-      resetZoom: () => set({ zoomLevel: 100 }),
+      resetZoom: () => set({ zoomLevel: 120 }),
       toggleEpisodeNav: () => set((s) => ({ showEpisodeNav: !s.showEpisodeNav })),
       setEditorMode: (editorMode) =>
         set({
           editorMode,
-          showAnnotations: editorMode === 'annotate',
+          showAnnotations: editorMode === 'analyze',
         }),
       toggleAnnotations: () => set((s) => ({ showAnnotations: !s.showAnnotations })),
+
+      setActiveOverlay: (activeOverlay) => set({ activeOverlay }),
+      setStructureFramework: (structureFramework) => set({ structureFramework }),
+      setActiveLeftTab: (activeLeftTab) => set({ activeLeftTab }),
+      setOnboardingComplete: (onboardingComplete) => set({ onboardingComplete }),
     }),
     {
-      name: 'coil-settings-v2',
-      version: 1,
+      name: 'coil-settings-v3',
+      version: 2,
       migrate: (persisted, version) => {
+        const state = persisted as Record<string, unknown>
         if (version === 0) {
-          // Migrate to 12pt Courier Prime (industry standard)
-          const state = persisted as Record<string, unknown>
-          return { ...state, fontSize: 16, zoomLevel: 100 }
+          return { ...state, fontSize: 16, zoomLevel: 120 }
+        }
+        if (version === 1) {
+          // Migrate 'edit' -> 'write', 'annotate' -> 'analyze'
+          const mode = state.editorMode
+          const newMode = mode === 'edit' ? 'write' : mode === 'annotate' ? 'analyze' : mode
+          return {
+            ...state,
+            editorMode: newMode,
+            activeOverlay: 'none',
+            structureFramework: 'save-the-cat',
+            activeLeftTab: 'structure',
+            onboardingComplete: false,
+          }
         }
         return persisted as SettingsState
       },
       onRehydrateStorage: () => {
-        // Apply the persisted preset on load
         return (state?: SettingsState) => {
           if (state) {
             const p = getPreset(state.preset)

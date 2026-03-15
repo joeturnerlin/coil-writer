@@ -2,7 +2,9 @@ import { Check, Loader2, RefreshCw, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { markLines } from '../editor/revision-gutter'
 import { requestRewrite } from '../lib/ai-provider'
+import { applyProfileDelta, computeProfileDelta, detectSpeakingCharacter } from '../lib/profile-updater'
 import { useAIStore } from '../store/ai-store'
+import { useCharacterStore } from '../store/character-store'
 import { useEditorStore } from '../store/editor-store'
 import { useRevisionStore } from '../store/revision-store'
 
@@ -111,6 +113,19 @@ export function AIRewritePopup() {
     // Mark the changed lines in the gutter
     if (changedLines.length > 0) {
       view.dispatch({ effects: markLines.of(changedLines) })
+    }
+
+    // Profile flywheel: compute delta
+    const character = detectSpeakingCharacter(rewriteSelection.context, rewriteSelection.from)
+    if (character) {
+      const profile = useCharacterStore.getState().getEffectiveProfile(character)
+      const delta = computeProfileDelta(rewriteSelection.text, text, character, profile)
+      if (delta) {
+        const currentFileName = useEditorStore.getState().fileName
+        if (currentFileName) {
+          applyProfileDelta(delta, currentFileName, rewriteSelection.text, text)
+        }
+      }
     }
 
     clearRewrite()
@@ -434,7 +449,8 @@ export function AIRewritePopup() {
               borderRadius: 'var(--card-radius)',
               cursor: customText.trim() && customText !== rewriteSelection.text ? 'pointer' : 'default',
               transition: 'all 0.15s ease',
-              background: customText.trim() && customText !== rewriteSelection.text ? 'var(--accent-cyan)' : 'var(--bg-hover)',
+              background:
+                customText.trim() && customText !== rewriteSelection.text ? 'var(--accent-cyan)' : 'var(--bg-hover)',
               color: customText.trim() && customText !== rewriteSelection.text ? '#0a0a0f' : 'var(--text-muted)',
               border: 'none',
               opacity: customText.trim() && customText !== rewriteSelection.text ? 1 : 0.5,

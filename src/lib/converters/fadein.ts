@@ -45,7 +45,9 @@ export async function importFadeIn(data: ArrayBuffer): Promise<ConversionResult>
   if (parseError) {
     return {
       ir: { titlePage: [], elements: [], metadata: { sourceFormat: 'fadein' } },
-      warnings: [{ message: `XML parse error in document.xml: ${parseError.textContent?.slice(0, 200)}`, severity: 'error' }],
+      warnings: [
+        { message: `XML parse error in document.xml: ${parseError.textContent?.slice(0, 200)}`, severity: 'error' },
+      ],
     }
   }
 

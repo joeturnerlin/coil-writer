@@ -198,12 +198,7 @@ function parseFDXParagraph(
   return element
 }
 
-function parseDualDialogue(
-  dd: Element,
-  elements: ScriptElement[],
-  lineNum: number,
-  warnings: ConversionWarning[],
-) {
+function parseDualDialogue(dd: Element, elements: ScriptElement[], lineNum: number, warnings: ConversionWarning[]) {
   const paragraphs = dd.querySelectorAll('Paragraph')
   let foundFirstCharacter = false
   let isSecondCharacter = false
@@ -364,12 +359,7 @@ function hasDualDialogueAhead(elements: ScriptElement[], fromIndex: number): boo
   return false
 }
 
-function appendCharacterBlock(
-  doc: Document,
-  parent: Element,
-  elements: ScriptElement[],
-  startIndex: number,
-): number {
+function appendCharacterBlock(doc: Document, parent: Element, elements: ScriptElement[], startIndex: number): number {
   let i = startIndex
   const charPara = createFDXParagraph(doc, elements[i])
   parent.appendChild(charPara)

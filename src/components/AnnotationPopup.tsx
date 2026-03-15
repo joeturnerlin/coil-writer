@@ -246,12 +246,7 @@ export function AnnotationPopup({ selection, position, onClose, onAIRewrite }: A
 
         <div style={{ display: 'flex', gap: '4px' }}>
           {(['rewrite', 'delete', 'move', 'flag'] as AnnotationAction[]).map((a) => (
-            <button
-              key={a}
-              style={actionBtnStyle(action === a)}
-              onClick={() => setAction(a)}
-              type="button"
-            >
+            <button key={a} style={actionBtnStyle(action === a)} onClick={() => setAction(a)} type="button">
               {a}
             </button>
           ))}

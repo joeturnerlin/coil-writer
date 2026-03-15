@@ -1,0 +1,79 @@
+{
+  "id": "sequence",
+  "name": "Sequence Approach",
+  "author": "Paul Joseph Gulino",
+  "beats": [
+    {
+      "id": "seq-1",
+      "name": "Sequence 1: Setup",
+      "typical_position": 0.0,
+      "position_tolerance": 0.06,
+      "color": "#4fc3f7",
+      "category": "setup",
+      "description": "Establish the world, the status quo, and the protagonist's want."
+    },
+    {
+      "id": "seq-2",
+      "name": "Sequence 2: New Situation",
+      "typical_position": 0.12,
+      "position_tolerance": 0.06,
+      "color": "#ff9800",
+      "category": "catalyst",
+      "description": "The catalyst creates a new situation; the protagonist defines a goal."
+    },
+    {
+      "id": "seq-3",
+      "name": "Sequence 3: First Obstacle",
+      "typical_position": 0.25,
+      "position_tolerance": 0.06,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "The first real obstacle to the protagonist's goal."
+    },
+    {
+      "id": "seq-4",
+      "name": "Sequence 4: Midpoint",
+      "typical_position": 0.38,
+      "position_tolerance": 0.06,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "A major revelation or reversal that redefines the goal."
+    },
+    {
+      "id": "seq-5",
+      "name": "Sequence 5: Complications",
+      "typical_position": 0.5,
+      "position_tolerance": 0.06,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "Deeper complications and rising tension."
+    },
+    {
+      "id": "seq-6",
+      "name": "Sequence 6: Crisis",
+      "typical_position": 0.62,
+      "position_tolerance": 0.06,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "Approaching the worst possible outcome."
+    },
+    {
+      "id": "seq-7",
+      "name": "Sequence 7: Climax",
+      "typical_position": 0.75,
+      "position_tolerance": 0.06,
+      "color": "#4caf50",
+      "category": "resolution",
+      "description": "The ultimate confrontation and decisive action."
+    },
+    {
+      "id": "seq-8",
+      "name": "Sequence 8: Resolution",
+      "typical_position": 0.88,
+      "position_tolerance": 0.06,
+      "color": "#4caf50",
+      "category": "resolution",
+      "description": "New equilibrium and aftermath."
+    }
+  ]
+}

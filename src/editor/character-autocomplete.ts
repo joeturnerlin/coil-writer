@@ -1,4 +1,4 @@
-import { autocompletion, type CompletionContext, type CompletionResult } from '@codemirror/autocomplete'
+import { type CompletionContext, type CompletionResult, autocompletion } from '@codemirror/autocomplete'
 import type { Extension } from '@codemirror/state'
 
 /** Scene heading prefixes (SmartType field 1) */
@@ -6,8 +6,17 @@ const SCENE_PREFIXES = ['INT. ', 'EXT. ', 'INT./EXT. ', 'I/E. ']
 
 /** Standard times of day (SmartType field 3) */
 const TIMES_OF_DAY = [
-  'DAY', 'NIGHT', 'CONTINUOUS', 'LATER', 'MOMENTS LATER',
-  'SAME', 'DAWN', 'DUSK', 'MORNING', 'EVENING', 'AFTERNOON',
+  'DAY',
+  'NIGHT',
+  'CONTINUOUS',
+  'LATER',
+  'MOMENTS LATER',
+  'SAME',
+  'DAWN',
+  'DUSK',
+  'MORNING',
+  'EVENING',
+  'AFTERNOON',
 ]
 
 /**
@@ -45,11 +54,19 @@ function extractCharacterNames(doc: string): string[] {
     }
 
     // Skip structural elements
-    if (trimmed.startsWith('/*') || trimmed.startsWith('.') || trimmed.startsWith('!') ||
-        trimmed.startsWith('>') || trimmed.startsWith('~') || trimmed === '===' ||
-        /^\[\[EPISODE/i.test(trimmed) || /^#\s*\[/.test(trimmed) ||
-        /^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)/i.test(trimmed) ||
-        /^(FADE|CUT|DISSOLVE|SMASH)/i.test(trimmed) || /TO:$/i.test(trimmed)) {
+    if (
+      trimmed.startsWith('/*') ||
+      trimmed.startsWith('.') ||
+      trimmed.startsWith('!') ||
+      trimmed.startsWith('>') ||
+      trimmed.startsWith('~') ||
+      trimmed === '===' ||
+      /^\[\[EPISODE/i.test(trimmed) ||
+      /^#\s*\[/.test(trimmed) ||
+      /^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)/i.test(trimmed) ||
+      /^(FADE|CUT|DISSOLVE|SMASH)/i.test(trimmed) ||
+      /TO:$/i.test(trimmed)
+    ) {
       prevBlank = false
       prevType = 'other'
       continue
@@ -57,7 +74,11 @@ function extractCharacterNames(doc: string): string[] {
 
     // Forced character
     if (trimmed.startsWith('@')) {
-      const name = trimmed.slice(1).replace(/\s*\^$/, '').trim().toUpperCase()
+      const name = trimmed
+        .slice(1)
+        .replace(/\s*\^$/, '')
+        .trim()
+        .toUpperCase()
       if (name) names.add(name)
       prevBlank = false
       prevType = 'character'
@@ -65,8 +86,12 @@ function extractCharacterNames(doc: string): string[] {
     }
 
     // Natural character: ALL CAPS after blank, < 50 chars, no sentence-ending punctuation
-    const afterBreak = prevBlank || prevType === 'blank' || prevType === null ||
-                       prevType === 'scene-heading' || prevType === 'page-break'
+    const afterBreak =
+      prevBlank ||
+      prevType === 'blank' ||
+      prevType === null ||
+      prevType === 'scene-heading' ||
+      prevType === 'page-break'
     const coreName = trimmed.replace(/\s*\(.*\)$/, '').replace(/\s*\^$/, '')
     if (
       afterBreak &&
@@ -137,11 +162,11 @@ function sceneHeadingCompletionSource(context: CompletionContext): CompletionRes
 
   if (!hasFullPrefix) {
     if (!/^\.?[IE]/i.test(trimmed)) return null
-    const prefixMatches = SCENE_PREFIXES.filter(p => p.startsWith(matchText))
+    const prefixMatches = SCENE_PREFIXES.filter((p) => p.startsWith(matchText))
     if (prefixMatches.length === 0) return null
     return {
       from: line.from + (isForced ? 1 : 0),
-      options: prefixMatches.map(p => ({
+      options: prefixMatches.map((p) => ({
         label: p.trimEnd(),
         apply: (isForced ? '' : '.') + p,
         type: 'keyword',
@@ -166,7 +191,7 @@ function sceneHeadingCompletionSource(context: CompletionContext): CompletionRes
       if (allLocations.length === 0) return null
       return {
         from,
-        options: allLocations.map(loc => ({
+        options: allLocations.map((loc) => ({
           label: loc,
           apply: loc + ' - ',
           type: 'text',
@@ -176,11 +201,11 @@ function sceneHeadingCompletionSource(context: CompletionContext): CompletionRes
       }
     }
 
-    const matches = allLocations.filter(loc => loc.startsWith(locUpper) && loc !== locUpper)
+    const matches = allLocations.filter((loc) => loc.startsWith(locUpper) && loc !== locUpper)
     if (matches.length === 0) return null
     return {
       from,
-      options: matches.map(loc => ({
+      options: matches.map((loc) => ({
         label: loc,
         apply: loc + ' - ',
         type: 'text',
@@ -196,14 +221,13 @@ function sceneHeadingCompletionSource(context: CompletionContext): CompletionRes
   const dashPos = textBefore.lastIndexOf(' - ') + 3
   const from = line.from + dashPos
 
-  const timeMatches = afterDash.length === 0
-    ? TIMES_OF_DAY
-    : TIMES_OF_DAY.filter(t => t.startsWith(timeUpper) && t !== timeUpper)
+  const timeMatches =
+    afterDash.length === 0 ? TIMES_OF_DAY : TIMES_OF_DAY.filter((t) => t.startsWith(timeUpper) && t !== timeUpper)
 
   if (timeMatches.length === 0) return null
   return {
     from,
-    options: timeMatches.map(t => ({
+    options: timeMatches.map((t) => ({
       label: t,
       type: 'text',
       boost: 1,
@@ -250,13 +274,13 @@ function characterCompletionSource(context: CompletionContext): CompletionResult
 
   // Filter to names matching the prefix
   const upper = prefix.toUpperCase()
-  const matches = allNames.filter(name => name.startsWith(upper) && name !== upper)
+  const matches = allNames.filter((name) => name.startsWith(upper) && name !== upper)
 
   if (matches.length === 0) return null
 
   return {
     from: line.from + (hasAt ? 1 : 0),
-    options: matches.map(name => ({
+    options: matches.map((name) => ({
       label: name,
       type: 'text',
       boost: 1,

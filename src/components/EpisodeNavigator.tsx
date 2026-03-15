@@ -40,7 +40,10 @@ export function EpisodeNavigator() {
         })
       }
       // Also collect scene headings for fallback
-      if (/^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)/i.test(line) || (line.startsWith('.') && line.length > 1 && line[1] !== '.')) {
+      if (
+        /^(INT\.|EXT\.|INT\/EXT\.|I\/E\.)/i.test(line) ||
+        (line.startsWith('.') && line.length > 1 && line[1] !== '.')
+      ) {
         sceneIndex++
         const title = line.startsWith('.') ? line.slice(1).trim() : line
         scn.push({ index: sceneIndex, title, startPos: pos })
@@ -114,6 +117,9 @@ export function EpisodeNavigator() {
       selection: { anchor: pos },
       effects: EditorView.scrollIntoView(pos, { y: 'start', yMargin: 10 }),
     })
+    const scroller = view.scrollDOM
+    scroller.style.scrollBehavior = 'smooth'
+    setTimeout(() => { scroller.style.scrollBehavior = '' }, 500)
     view.focus()
   }
 
@@ -281,50 +287,51 @@ export function EpisodeNavigator() {
         })}
 
         {/* Scene items (fallback when no episodes) */}
-        {isSceneMode && scenes.map((sc) => {
-          const isActive = activeScene === sc.index
-          return (
-            <button
-              key={sc.index}
-              style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '6px 12px',
-                fontSize: '12px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                background: isActive ? 'var(--bg-hover)' : 'transparent',
-                border: 'none',
-                borderLeftStyle: 'solid',
-                borderLeftWidth: '2px',
-                borderLeftColor: isActive ? 'var(--color-scene-heading)' : 'transparent',
-                transition: 'background 0.1s ease',
-                fontFamily: 'inherit',
-              }}
-              onClick={() => {
-                scrollToPosition(sc.startPos)
-                setActiveScene(sc.index)
-              }}
-              type="button"
-            >
-              <div
+        {isSceneMode &&
+          scenes.map((sc) => {
+            const isActive = activeScene === sc.index
+            return (
+              <button
+                key={sc.index}
                 style={{
-                  fontSize: '10px',
-                  color: isActive ? 'var(--color-scene-heading)' : 'var(--text-secondary)',
-                  fontWeight: isActive ? 600 : 400,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                  maxWidth: '150px',
-                  textTransform: 'uppercase',
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: isActive ? 'var(--bg-hover)' : 'transparent',
+                  border: 'none',
+                  borderLeftStyle: 'solid',
+                  borderLeftWidth: '2px',
+                  borderLeftColor: isActive ? 'var(--color-scene-heading)' : 'transparent',
+                  transition: 'background 0.1s ease',
+                  fontFamily: 'inherit',
                 }}
+                onClick={() => {
+                  scrollToPosition(sc.startPos)
+                  setActiveScene(sc.index)
+                }}
+                type="button"
               >
-                {sc.title}
-              </div>
-            </button>
-          )
-        })}
+                <div
+                  style={{
+                    fontSize: '10px',
+                    color: isActive ? 'var(--color-scene-heading)' : 'var(--text-secondary)',
+                    fontWeight: isActive ? 600 : 400,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    maxWidth: '150px',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  {sc.title}
+                </div>
+              </button>
+            )
+          })}
 
         {episodes.length === 0 && scenes.length === 0 && (
           <div style={{ padding: '16px 12px', fontSize: '10px', color: 'var(--text-muted)' }}>

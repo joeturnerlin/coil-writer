@@ -50,9 +50,24 @@ export interface Episode {
 }
 
 /**
- * Editor mode — edit is default, analyze is read-only with annotation tools.
+ * Editor modes — controls sidebar content and CM6 extensions.
+ * Editor is always editable in both modes. Modes change surroundings, not editor state.
+ *
+ * Migration: 'edit' -> 'write', 'annotate' -> 'analyze'
  */
-export type EditorMode = 'edit' | 'annotate'
+export type EditorMode = 'write' | 'analyze'
+
+/**
+ * Full-screen overlays — portals rendered as siblings to editor layout.
+ * Independent from EditorMode. Can be triggered from toolbar or keyboard shortcut.
+ */
+export type ActiveOverlay = 'none' | 'beat-board'
+
+/** Structure framework identifier */
+export type StructureFramework = 'save-the-cat' | 'heros-journey' | 'story-structure' | 'sequence'
+
+/** Active tab in the left panel during Analyze mode */
+export type AnalyzeLeftTab = 'structure' | 'beatboard'
 
 /**
  * Stats derived from the document.
@@ -90,4 +105,9 @@ export interface Annotation {
   severity?: AnnotationSeverity
   dimensions?: string[]
   createdAt: string
+  // Anchor fields for Note Transfer (Phase 3)
+  anchorHeading?: string
+  anchorContext?: string
+  anchorCharacter?: string
+  fileName?: string
 }

@@ -1,0 +1,142 @@
+{
+  "id": "save-the-cat",
+  "name": "Save the Cat!",
+  "author": "Blake Snyder",
+  "beats": [
+    {
+      "id": "opening-image",
+      "name": "Opening Image",
+      "typical_position": 0.0,
+      "position_tolerance": 0.02,
+      "color": "#4fc3f7",
+      "category": "setup",
+      "description": "A visual that sets the tone, mood, and type."
+    },
+    {
+      "id": "theme-stated",
+      "name": "Theme Stated",
+      "typical_position": 0.04,
+      "position_tolerance": 0.03,
+      "color": "#4fc3f7",
+      "category": "setup",
+      "description": "Someone states the theme, usually to the hero."
+    },
+    {
+      "id": "setup",
+      "name": "Setup",
+      "typical_position": 0.08,
+      "position_tolerance": 0.05,
+      "color": "#4fc3f7",
+      "category": "setup",
+      "description": "Explore the hero's world, introduce key characters."
+    },
+    {
+      "id": "catalyst",
+      "name": "Catalyst",
+      "typical_position": 0.1,
+      "position_tolerance": 0.03,
+      "color": "#ff9800",
+      "category": "catalyst",
+      "description": "The inciting incident that disrupts the status quo."
+    },
+    {
+      "id": "debate",
+      "name": "Debate",
+      "typical_position": 0.15,
+      "position_tolerance": 0.05,
+      "color": "#ff9800",
+      "category": "catalyst",
+      "description": "The hero doubts and questions the journey ahead."
+    },
+    {
+      "id": "break-into-two",
+      "name": "Break into Two",
+      "typical_position": 0.22,
+      "position_tolerance": 0.03,
+      "color": "#ff9800",
+      "category": "catalyst",
+      "description": "The hero makes a proactive choice to enter the new world."
+    },
+    {
+      "id": "b-story",
+      "name": "B Story",
+      "typical_position": 0.25,
+      "position_tolerance": 0.05,
+      "color": "#4fc3f7",
+      "category": "setup",
+      "description": "The secondary storyline, often a love interest or mentor."
+    },
+    {
+      "id": "fun-and-games",
+      "name": "Fun and Games",
+      "typical_position": 0.35,
+      "position_tolerance": 0.1,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "The promise of the premise. Why we bought the ticket."
+    },
+    {
+      "id": "midpoint",
+      "name": "Midpoint",
+      "typical_position": 0.5,
+      "position_tolerance": 0.03,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "False victory or false defeat that raises the stakes."
+    },
+    {
+      "id": "bad-guys-close-in",
+      "name": "Bad Guys Close In",
+      "typical_position": 0.6,
+      "position_tolerance": 0.08,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "Internal and external forces tighten around the hero."
+    },
+    {
+      "id": "all-is-lost",
+      "name": "All Is Lost",
+      "typical_position": 0.72,
+      "position_tolerance": 0.03,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "The opposite of the midpoint. The lowest moment."
+    },
+    {
+      "id": "dark-night",
+      "name": "Dark Night of the Soul",
+      "typical_position": 0.77,
+      "position_tolerance": 0.05,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "The hero processes loss and finds the will to continue."
+    },
+    {
+      "id": "break-into-three",
+      "name": "Break into Three",
+      "typical_position": 0.8,
+      "position_tolerance": 0.03,
+      "color": "#4caf50",
+      "category": "resolution",
+      "description": "Eureka moment. Hero combines A and B story insights."
+    },
+    {
+      "id": "finale",
+      "name": "Finale",
+      "typical_position": 0.88,
+      "position_tolerance": 0.08,
+      "color": "#4caf50",
+      "category": "resolution",
+      "description": "The hero executes the new plan and defeats the opposition."
+    },
+    {
+      "id": "final-image",
+      "name": "Final Image",
+      "typical_position": 0.98,
+      "position_tolerance": 0.02,
+      "color": "#4caf50",
+      "category": "resolution",
+      "description": "The mirror of the opening image, showing how the world has changed."
+    }
+  ]
+}

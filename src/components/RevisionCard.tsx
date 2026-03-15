@@ -1,8 +1,8 @@
+import { EditorView } from '@codemirror/view'
 import { CornerDownRight, Sparkles, Trash2, Type } from 'lucide-react'
+import { useEditorStore } from '../store/editor-store'
 import type { Revision } from '../store/revision-store'
 import { REVISION_COLORS, useRevisionStore } from '../store/revision-store'
-import { useEditorStore } from '../store/editor-store'
-import { EditorView } from '@codemirror/view'
 
 interface RevisionCardProps {
   revision: Revision
@@ -26,8 +26,7 @@ export function RevisionCard({ revision }: RevisionCardProps) {
     view.focus()
   }
 
-  const truncate = (text: string, max: number) =>
-    text.length > max ? text.slice(0, max) + '...' : text
+  const truncate = (text: string, max: number) => (text.length > max ? text.slice(0, max) + '...' : text)
 
   const labelStyle: React.CSSProperties = {
     fontSize: '9px',
@@ -85,9 +84,7 @@ export function RevisionCard({ revision }: RevisionCardProps) {
           </span>
 
           {/* Line number */}
-          <span style={{ ...labelStyle, color: 'var(--text-dim)' }}>
-            L{revision.lineNumber}
-          </span>
+          <span style={{ ...labelStyle, color: 'var(--text-dim)' }}>L{revision.lineNumber}</span>
 
           {/* Revision pass dot */}
           <span

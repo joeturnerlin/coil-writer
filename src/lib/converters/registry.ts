@@ -1,4 +1,4 @@
-import { importFDX, exportFDX } from './fdx'
+import { exportFDX, importFDX } from './fdx'
 import { fountainToIR, irToFountain } from './fountain-ir'
 import type { ConversionResult, ConversionWarning, ExportResult, FormatDescriptor, FormatId, ScriptIR } from './types'
 
@@ -109,11 +109,7 @@ export async function importFile(
 /**
  * Export content to a specific format.
  */
-export async function exportFile(
-  content: string,
-  format: FormatId,
-  _fileName: string,
-): Promise<ExportResult> {
+export async function exportFile(content: string, format: FormatId, _fileName: string): Promise<ExportResult> {
   if (format === 'fdx') {
     const { ir } = fountainToIR(content)
     return exportFDX(ir)

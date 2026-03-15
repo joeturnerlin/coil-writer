@@ -6,8 +6,8 @@
  * This is a visual aid only — does not affect print pagination.
  */
 
-import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 import type { Extension } from '@codemirror/state'
+import { Decoration, type DecorationSet, EditorView, ViewPlugin, type ViewUpdate } from '@codemirror/view'
 
 const LINES_PER_PAGE = 55
 
@@ -23,7 +23,7 @@ function computePageBreaks(view: EditorView): DecorationSet {
     decos.push({ from: line.from })
   }
 
-  return Decoration.set(decos.map(d => pageBreakDeco.range(d.from)))
+  return Decoration.set(decos.map((d) => pageBreakDeco.range(d.from)))
 }
 
 const pageBreakPlugin = ViewPlugin.define(

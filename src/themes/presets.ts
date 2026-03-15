@@ -39,8 +39,8 @@ const recoil: ThemePreset = {
     // Text
     '--text-primary': '#e0e4ec',
     '--text-secondary': '#a0a8b8',
-    '--text-muted': '#5a6478',
-    '--text-dim': '#3a4050',
+    '--text-muted': '#7a8498',
+    '--text-dim': '#4a5568',
     // Accent: green (edit mode)
     '--accent-green': '#0d2818',
     '--accent-green-hover': '#1a4028',
@@ -99,6 +99,36 @@ const recoil: ThemePreset = {
     // ── Toolbar ──
     '--toolbar-bg': '#0a0a0f',
     '--toolbar-border': '#1e1e2e',
+    // ── Mode Colors ──
+    '--mode-write-bg': '#0d2818',
+    '--mode-write-text': '#4ade80',
+    '--mode-analyze-bg': 'rgba(255, 152, 0, 0.12)',
+    '--mode-analyze-text': '#ff9800',
+    '--mode-analyze-border': '#ff9800',
+    // ── Feature Colors ──
+    '--subtext-dot': '#ff9800',
+    '--subtext-underline': 'rgba(255, 152, 0, 0.3)',
+    '--structure-beat': '#4fc3f7',
+    '--structure-gap': '#ef5350',
+    '--continuity-warning': '#ef5350',
+    // ── Stash Drawer ──
+    '--stash-tab-bg': '#1a1a24',
+    '--stash-tab-border': '#1e1e2e',
+    '--stash-handle-color': '#3a4050',
+    // ── Transport ──
+    '--transport-bg': '#12121a',
+    '--transport-border': '#1e1e2e',
+    '--transport-play': '#4caf50',
+    '--transport-pause': '#ff9800',
+    // ── Character Hub ──
+    '--character-badge-bg': '#22222e',
+    '--character-badge-text': '#5a6478',
+    '--character-expand-bg': '#1a1a24',
+    // ── Onboarding ──
+    '--onboarding-scrim': 'rgba(0, 0, 0, 0.75)',
+    '--onboarding-spotlight': 'transparent',
+    '--onboarding-card-bg': '#12121a',
+    '--onboarding-card-border': '#00f0ff',
   },
 }
 
@@ -121,8 +151,8 @@ const muted: ThemePreset = {
     // Text — warm whites
     '--text-primary': '#ddd8d0',
     '--text-secondary': '#a8a098',
-    '--text-muted': '#7a736b',
-    '--text-dim': '#5a544e',
+    '--text-muted': '#9a938b',
+    '--text-dim': '#6a645e',
     // Accent: green
     '--accent-green': '#2d5a27',
     '--accent-green-hover': '#3d7a37',
@@ -181,6 +211,36 @@ const muted: ThemePreset = {
     // ── Toolbar ──
     '--toolbar-bg': '#1f1e1c',
     '--toolbar-border': '#2a2825',
+    // ── Mode Colors ──
+    '--mode-write-bg': '#2d5a27',
+    '--mode-write-text': '#81c784',
+    '--mode-analyze-bg': 'rgba(212, 165, 116, 0.12)',
+    '--mode-analyze-text': '#d4a574',
+    '--mode-analyze-border': '#d4a574',
+    // ── Feature Colors ──
+    '--subtext-dot': '#d4a574',
+    '--subtext-underline': 'rgba(212, 165, 116, 0.3)',
+    '--structure-beat': '#90a4ae',
+    '--structure-gap': '#e57373',
+    '--continuity-warning': '#e57373',
+    // ── Stash Drawer ──
+    '--stash-tab-bg': '#272523',
+    '--stash-tab-border': '#3a3530',
+    '--stash-handle-color': '#5a544e',
+    // ── Transport ──
+    '--transport-bg': '#1f1e1c',
+    '--transport-border': '#3a3530',
+    '--transport-play': '#81c784',
+    '--transport-pause': '#d4a574',
+    // ── Character Hub ──
+    '--character-badge-bg': '#342f2b',
+    '--character-badge-text': '#7a736b',
+    '--character-expand-bg': '#272523',
+    // ── Onboarding ──
+    '--onboarding-scrim': 'rgba(0, 0, 0, 0.75)',
+    '--onboarding-spotlight': 'transparent',
+    '--onboarding-card-bg': '#1f1e1c',
+    '--onboarding-card-border': '#d4a574',
   },
 }
 
@@ -203,8 +263,8 @@ const light: ThemePreset = {
     // Text
     '--text-primary': '#1a1a1a',
     '--text-secondary': '#4a4540',
-    '--text-muted': '#8a857f',
-    '--text-dim': '#b0aaa3',
+    '--text-muted': '#6a655f',
+    '--text-dim': '#8a857f',
     // Accent: green
     '--accent-green': '#e8f5e9',
     '--accent-green-hover': '#c8e6c9',
@@ -264,6 +324,36 @@ const light: ThemePreset = {
     // ── Toolbar ──
     '--toolbar-bg': '#f0eeeb',
     '--toolbar-border': '#d5d0ca',
+    // ── Mode Colors ──
+    '--mode-write-bg': '#e8f5e9',
+    '--mode-write-text': '#2e7d32',
+    '--mode-analyze-bg': 'rgba(255, 152, 0, 0.08)',
+    '--mode-analyze-text': '#e65100',
+    '--mode-analyze-border': '#e65100',
+    // ── Feature Colors ──
+    '--subtext-dot': '#e65100',
+    '--subtext-underline': 'rgba(230, 81, 0, 0.2)',
+    '--structure-beat': '#1565c0',
+    '--structure-gap': '#c62828',
+    '--continuity-warning': '#c62828',
+    // ── Stash Drawer ──
+    '--stash-tab-bg': '#f0eeeb',
+    '--stash-tab-border': '#d5d0ca',
+    '--stash-handle-color': '#b0aaa3',
+    // ── Transport ──
+    '--transport-bg': '#ffffff',
+    '--transport-border': '#d5d0ca',
+    '--transport-play': '#2e7d32',
+    '--transport-pause': '#e65100',
+    // ── Character Hub ──
+    '--character-badge-bg': '#e5e2de',
+    '--character-badge-text': '#8a857f',
+    '--character-expand-bg': '#f0eeeb',
+    // ── Onboarding ──
+    '--onboarding-scrim': 'rgba(0, 0, 0, 0.5)',
+    '--onboarding-spotlight': 'transparent',
+    '--onboarding-card-bg': '#ffffff',
+    '--onboarding-card-border': '#0277bd',
   },
 }
 

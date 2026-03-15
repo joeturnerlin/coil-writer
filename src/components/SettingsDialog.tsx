@@ -11,10 +11,19 @@ interface SettingsDialogProps {
 
 export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   const {
-    provider, model, apiKeys, setProvider, setModel, setApiKey,
-    comparisonEnabled, comparisonProviderA, comparisonModelA,
-    comparisonProviderB, comparisonModelB,
-    setComparisonEnabled, setComparisonModels,
+    provider,
+    model,
+    apiKeys,
+    setProvider,
+    setModel,
+    setApiKey,
+    comparisonEnabled,
+    comparisonProviderA,
+    comparisonModelA,
+    comparisonProviderB,
+    comparisonModelB,
+    setComparisonEnabled,
+    setComparisonModels,
   } = useAIStore()
   const [showKey, setShowKey] = useState(false)
 
@@ -129,11 +138,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           {/* Model */}
           <div>
             <label style={labelStyle}>Model</label>
-            <select
-              style={inputStyle}
-              value={model}
-              onChange={(e) => setModel(e.target.value)}
-            >
+            <select style={inputStyle} value={model} onChange={(e) => setModel(e.target.value)}>
               {modelsForProvider.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -204,38 +209,40 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             {comparisonEnabled && (
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ ...labelStyle, fontSize: '9px', marginBottom: '4px', display: 'block' }}>Model A</label>
+                  <label style={{ ...labelStyle, fontSize: '9px', marginBottom: '4px', display: 'block' }}>
+                    Model A
+                  </label>
                   <select
                     style={{ ...inputStyle, fontSize: '11px' }}
                     value={`${comparisonProviderA}:${comparisonModelA}`}
                     onChange={(e) => {
                       const [prov, ...rest] = e.target.value.split(':')
-                      setComparisonModels(
-                        prov as AIProvider, rest.join(':'),
-                        comparisonProviderB, comparisonModelB
-                      )
+                      setComparisonModels(prov as AIProvider, rest.join(':'), comparisonProviderB, comparisonModelB)
                     }}
                   >
-                    {AVAILABLE_MODELS.map(m => (
-                      <option key={m.id} value={`${m.provider}:${m.id}`}>{m.name}</option>
+                    {AVAILABLE_MODELS.map((m) => (
+                      <option key={m.id} value={`${m.provider}:${m.id}`}>
+                        {m.name}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ ...labelStyle, fontSize: '9px', marginBottom: '4px', display: 'block' }}>Model B</label>
+                  <label style={{ ...labelStyle, fontSize: '9px', marginBottom: '4px', display: 'block' }}>
+                    Model B
+                  </label>
                   <select
                     style={{ ...inputStyle, fontSize: '11px' }}
                     value={`${comparisonProviderB}:${comparisonModelB}`}
                     onChange={(e) => {
                       const [prov, ...rest] = e.target.value.split(':')
-                      setComparisonModels(
-                        comparisonProviderA, comparisonModelA,
-                        prov as AIProvider, rest.join(':')
-                      )
+                      setComparisonModels(comparisonProviderA, comparisonModelA, prov as AIProvider, rest.join(':'))
                     }}
                   >
-                    {AVAILABLE_MODELS.map(m => (
-                      <option key={m.id} value={`${m.provider}:${m.id}`}>{m.name}</option>
+                    {AVAILABLE_MODELS.map((m) => (
+                      <option key={m.id} value={`${m.provider}:${m.id}`}>
+                        {m.name}
+                      </option>
                     ))}
                   </select>
                 </div>

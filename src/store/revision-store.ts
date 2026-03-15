@@ -72,8 +72,7 @@ export const useRevisionStore = create<RevisionState>()(
 
       clearRevisions: () => set({ revisions: [], currentPass: 1 }),
 
-      removeRevision: (id) =>
-        set((s) => ({ revisions: s.revisions.filter((r) => r.id !== id) })),
+      removeRevision: (id) => set((s) => ({ revisions: s.revisions.filter((r) => r.id !== id) })),
     }),
     {
       name: 'coil-revisions',

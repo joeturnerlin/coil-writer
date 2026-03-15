@@ -109,9 +109,10 @@ function getMarkers(style: InlineStyle): [string, string] {
 /**
  * Parse FDX Text elements (with Style attributes) into plain text + spans.
  */
-export function fdxStylesToSpans(
-  textElements: Array<{ text: string; style?: string }>,
-): { plainText: string; spans: InlineSpan[] } {
+export function fdxStylesToSpans(textElements: Array<{ text: string; style?: string }>): {
+  plainText: string
+  spans: InlineSpan[]
+} {
   const spans: InlineSpan[] = []
   let plain = ''
 
@@ -134,10 +135,7 @@ export function fdxStylesToSpans(
 /**
  * Convert spans back to FDX Text elements.
  */
-export function spansToFDXTextElements(
-  text: string,
-  spans: InlineSpan[],
-): Array<{ text: string; style?: string }> {
+export function spansToFDXTextElements(text: string, spans: InlineSpan[]): Array<{ text: string; style?: string }> {
   if (!spans || spans.length === 0) {
     return [{ text }]
   }

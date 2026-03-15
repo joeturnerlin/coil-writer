@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { AIProvider, RewriteSuggestion } from '../lib/ai-provider'
 import type { AnalysisPhase } from '../lib/script-analysis'
+import type { SubtextResult } from '../lib/subtext-analysis'
 import type { VoiceProfile } from '../lib/voice-profile'
 
 interface AIState {
@@ -41,6 +42,12 @@ interface AIState {
   comparisonErrorA: string | null
   comparisonErrorB: string | null
 
+  // Subtext state (not persisted)
+  subtextLoading: boolean
+  subtextResult: SubtextResult | null
+  subtextError: string | null
+  showMediumConfidence: boolean
+
   // Actions
   setProvider: (provider: AIProvider) => void
   setModel: (model: string) => void
@@ -64,6 +71,13 @@ interface AIState {
   setComparisonLoadingB: (loading: boolean) => void
   clearComparison: () => void
   recordPreference: (modelId: string) => void
+
+  // Subtext actions
+  setSubtextLoading: (loading: boolean) => void
+  setSubtextResult: (result: SubtextResult | null) => void
+  setSubtextError: (error: string | null) => void
+  clearSubtext: () => void
+  toggleMediumConfidence: () => void
 }
 
 export const useAIStore = create<AIState>()(
@@ -97,6 +111,11 @@ export const useAIStore = create<AIState>()(
       comparisonErrorA: null,
       comparisonErrorB: null,
 
+      subtextLoading: false,
+      subtextResult: null,
+      subtextError: null,
+      showMediumConfidence: false,
+
       setProvider: (provider) => set({ provider }),
       setModel: (model) => set({ model }),
       setApiKey: (provider, key) => set((s) => ({ apiKeys: { ...s.apiKeys, [provider]: key } })),
@@ -118,8 +137,7 @@ export const useAIStore = create<AIState>()(
           comparisonErrorB: null,
         }),
 
-      setCurrentProfile: (currentProfile, currentProfileHash) =>
-        set({ currentProfile, currentProfileHash }),
+      setCurrentProfile: (currentProfile, currentProfileHash) => set({ currentProfile, currentProfileHash }),
       setAnalysisState: (analysisState) => set({ analysisState }),
 
       setComparisonEnabled: (comparisonEnabled) => set({ comparisonEnabled }),
@@ -147,6 +165,17 @@ export const useAIStore = create<AIState>()(
             [modelId]: (s.modelPreferences[modelId] || 0) + 1,
           },
         })),
+
+      setSubtextLoading: (subtextLoading) => set({ subtextLoading }),
+      setSubtextResult: (subtextResult) => set({ subtextResult, subtextError: null, subtextLoading: false }),
+      setSubtextError: (subtextError) => set({ subtextError, subtextLoading: false }),
+      clearSubtext: () =>
+        set({
+          subtextLoading: false,
+          subtextResult: null,
+          subtextError: null,
+        }),
+      toggleMediumConfidence: () => set((s) => ({ showMediumConfidence: !s.showMediumConfidence })),
     }),
     {
       name: 'recoil-fountain-ai',

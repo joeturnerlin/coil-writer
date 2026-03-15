@@ -1,0 +1,79 @@
+{
+  "id": "story-structure",
+  "name": "Story Structure",
+  "author": "Robert McKee",
+  "beats": [
+    {
+      "id": "inciting-incident",
+      "name": "Inciting Incident",
+      "typical_position": 0.1,
+      "position_tolerance": 0.05,
+      "color": "#ff9800",
+      "category": "catalyst",
+      "description": "The event that radically upsets the balance of forces in the protagonist's life."
+    },
+    {
+      "id": "first-act-climax",
+      "name": "First Act Climax",
+      "typical_position": 0.25,
+      "position_tolerance": 0.05,
+      "color": "#ff9800",
+      "category": "catalyst",
+      "description": "A major turning point that takes the protagonist into Act Two."
+    },
+    {
+      "id": "progressive-complications",
+      "name": "Progressive Complications",
+      "typical_position": 0.4,
+      "position_tolerance": 0.1,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "Rising conflict with increasing pressure on the protagonist."
+    },
+    {
+      "id": "midpoint-reversal",
+      "name": "Midpoint Reversal",
+      "typical_position": 0.5,
+      "position_tolerance": 0.03,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "A major shift that redefines the central conflict."
+    },
+    {
+      "id": "second-act-climax",
+      "name": "Second Act Climax",
+      "typical_position": 0.72,
+      "position_tolerance": 0.05,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "The lowest point — all seems lost before the final push."
+    },
+    {
+      "id": "crisis",
+      "name": "Crisis",
+      "typical_position": 0.8,
+      "position_tolerance": 0.03,
+      "color": "#ef5350",
+      "category": "conflict",
+      "description": "The ultimate dilemma — the protagonist must make the hardest choice."
+    },
+    {
+      "id": "climax",
+      "name": "Climax",
+      "typical_position": 0.9,
+      "position_tolerance": 0.05,
+      "color": "#4caf50",
+      "category": "resolution",
+      "description": "The decisive action that resolves the central conflict."
+    },
+    {
+      "id": "resolution",
+      "name": "Resolution",
+      "typical_position": 0.97,
+      "position_tolerance": 0.03,
+      "color": "#4caf50",
+      "category": "resolution",
+      "description": "The new equilibrium after the climax."
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import { History, Sparkles, Trash2, X } from 'lucide-react'
 import { useAIStore } from '../store/ai-store'
-import { useRevisionStore, REVISION_COLORS } from '../store/revision-store'
+import { REVISION_COLORS, useRevisionStore } from '../store/revision-store'
 import { useSettingsStore } from '../store/settings-store'
 import { useAnalysis } from './AnalysisPanel'
 import { RevisionCard } from './RevisionCard'
@@ -8,8 +8,7 @@ import { RevisionCard } from './RevisionCard'
 export function AnnotationsPanel() {
   const { toggleAnnotations } = useSettingsStore()
   const { currentProfile, analysisState } = useAIStore()
-  const { revisions, revisionMode, toggleRevisionMode, startNewPass, clearRevisions, currentPass } =
-    useRevisionStore()
+  const { revisions, revisionMode, toggleRevisionMode, startNewPass, clearRevisions, currentPass } = useRevisionStore()
   const triggerAnalysis = useAnalysis()
   const isAnalyzing = analysisState.status === 'analyzing' || analysisState.status === 'sending'
 

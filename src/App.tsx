@@ -1,27 +1,42 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AIRewritePopup } from './components/AIRewritePopup'
-import { DualRewritePopup } from './components/DualRewritePopup'
 import { AnalysisPanel } from './components/AnalysisPanel'
-import { AnnotationsPanel } from './components/AnnotationsPanel'
+import { ContextualLeftPanel } from './components/ContextualLeftPanel'
+import { ContextualRightPanel } from './components/ContextualRightPanel'
 import { ConversionWarnings } from './components/ConversionWarnings'
+import { DualRewritePopup } from './components/DualRewritePopup'
 import { EditorPanel } from './components/EditorPanel'
-import { EpisodeNavigator } from './components/EpisodeNavigator'
 import { FileDropZone } from './components/FileDropZone'
+import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { SettingsDialog } from './components/SettingsDialog'
+import { StashDrawer } from './components/StashDrawer'
 import { StatsBar } from './components/StatsBar'
 import { Toolbar } from './components/Toolbar'
 import { TypeIndicator } from './components/TypeIndicator'
 import { getRecoveredDocument } from './lib/persistence'
 import { useEditorStore } from './store/editor-store'
+import { useOnboardingStore } from './store/onboarding-store'
 import { useSettingsStore } from './store/settings-store'
 
 export function App() {
   const { fileName, content, importWarnings, importFormat } = useEditorStore()
-  const { theme, showEpisodeNav, showAnnotations } = useSettingsStore()
+  const { theme, showEpisodeNav, showAnnotations, editorMode, onboardingComplete, setOnboardingComplete } =
+    useSettingsStore()
+  const tourStep = useOnboardingStore((s) => s.tourStep)
   const [focusMode, setFocusMode] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const hasDocument = content !== null
+
+  // Track when tour completes to mark onboarding done
+  const prevTourStep = useRef(tourStep)
+  useEffect(() => {
+    // Tour just ended (went from a step to null) and onboarding not yet marked complete
+    if (prevTourStep.current !== null && tourStep === null && !onboardingComplete) {
+      setOnboardingComplete(true)
+    }
+    prevTourStep.current = tourStep
+  }, [tourStep, onboardingComplete, setOnboardingComplete])
 
   // Auto-recover last document on startup
   useEffect(() => {
@@ -58,7 +73,7 @@ export function App() {
       if (e.metaKey && e.key === 'e') {
         e.preventDefault()
         const current = useSettingsStore.getState().editorMode
-        useSettingsStore.getState().setEditorMode(current === 'edit' ? 'annotate' : 'edit')
+        useSettingsStore.getState().setEditorMode(current === 'write' ? 'analyze' : 'write')
       }
     }
     window.addEventListener('keydown', handler)
@@ -87,17 +102,20 @@ export function App() {
 
       {/* Main content area */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Episode navigator — left panel */}
-        {!focusMode && showEpisodeNav && hasDocument && <EpisodeNavigator />}
+        {/* Left panel — contextual by mode */}
+        {!focusMode && showEpisodeNav && hasDocument && <ContextualLeftPanel />}
 
         {/* Editor or drop zone — center */}
         <div className="flex-1 overflow-hidden">
           {hasDocument ? <EditorPanel focusMode={focusMode} /> : <FileDropZone />}
         </div>
 
-        {/* Annotation sidebar — right panel */}
-        {!focusMode && showAnnotations && hasDocument && <AnnotationsPanel />}
+        {/* Right panel — contextual by mode */}
+        {!focusMode && hasDocument && (editorMode === 'analyze' || showAnnotations) && <ContextualRightPanel />}
       </div>
+
+      {/* Stash drawer — between editor and stats bar */}
+      {hasDocument && <StashDrawer />}
 
       {/* Bottom bar — hidden in focus mode */}
       {!focusMode && hasDocument && <StatsBar />}
@@ -116,6 +134,9 @@ export function App() {
 
       {/* Analysis panel */}
       <AnalysisPanel />
+
+      {/* Onboarding overlay */}
+      {!onboardingComplete && hasDocument && tourStep !== null && <OnboardingOverlay />}
 
       {/* Focus mode escape hint */}
       {focusMode && (

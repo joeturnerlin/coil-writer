@@ -92,18 +92,17 @@ export function AnalysisPanel() {
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '10px 14px',
-          borderBottom: analysisState.status === 'complete' || analysisState.status === 'error'
-            ? 'none'
-            : '1px solid var(--border-color)',
+          borderBottom:
+            analysisState.status === 'complete' || analysisState.status === 'error'
+              ? 'none'
+              : '1px solid var(--border-color)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           {(analysisState.status === 'sending' || analysisState.status === 'analyzing') && (
             <Loader2 size={14} style={{ color: 'var(--accent-cyan)', animation: 'spin 1s linear infinite' }} />
           )}
-          {analysisState.status === 'complete' && (
-            <Sparkles size={14} style={{ color: 'var(--accent-cyan)' }} />
-          )}
+          {analysisState.status === 'complete' && <Sparkles size={14} style={{ color: 'var(--accent-cyan)' }} />}
           <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>
             {analysisState.status === 'sending' && 'Sending script...'}
             {analysisState.status === 'analyzing' && `Analyzing... (${elapsed}s)`}
@@ -136,9 +135,7 @@ export function AnalysisPanel() {
       {analysisState.status === 'complete' && (
         <div style={{ padding: '10px 14px', fontSize: '10px', color: 'var(--text-secondary)' }}>
           {analysisState.summary}
-          <div style={{ marginTop: '6px', color: 'var(--text-muted)' }}>
-            Your next rewrite will use this profile.
-          </div>
+          <div style={{ marginTop: '6px', color: 'var(--text-muted)' }}>Your next rewrite will use this profile.</div>
         </div>
       )}
 

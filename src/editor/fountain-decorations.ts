@@ -134,7 +134,13 @@ function classifyLine(
   }
 
   // 12. Dialogue (also follows dual-character for dual dialogue blocks)
-  if (prevType === 'character' || prevType === 'dual-character' || prevType === 'parenthetical' || prevType === 'dialogue' || prevType === 'dual-dialogue') {
+  if (
+    prevType === 'character' ||
+    prevType === 'dual-character' ||
+    prevType === 'parenthetical' ||
+    prevType === 'dialogue' ||
+    prevType === 'dual-dialogue'
+  ) {
     const isDual = prevType === 'dual-character' || prevType === 'dual-dialogue'
     return { type: isDual ? 'dual-dialogue' : 'dialogue', inTitlePage, inBoneyard }
   }
@@ -196,9 +202,8 @@ function buildLineDecorations(state: EditorState): DecorationSet {
 
     if (LINE_DECOS[result.type]) {
       const isBlockStart = result.type !== 'blank' && (prevBlank || prevType === 'page-break')
-      const deco = isBlockStart && LINE_DECOS_START[result.type]
-        ? LINE_DECOS_START[result.type]
-        : LINE_DECOS[result.type]
+      const deco =
+        isBlockStart && LINE_DECOS_START[result.type] ? LINE_DECOS_START[result.type] : LINE_DECOS[result.type]
       decorations.push(deco.range(line.from))
     }
 

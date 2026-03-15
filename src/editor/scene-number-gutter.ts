@@ -8,7 +8,7 @@
 
 import { RangeSet } from '@codemirror/state'
 import type { Extension } from '@codemirror/state'
-import { EditorView, GutterMarker, gutter, ViewPlugin, type ViewUpdate } from '@codemirror/view'
+import { EditorView, GutterMarker, ViewPlugin, type ViewUpdate, gutter } from '@codemirror/view'
 
 const SCENE_HEADING_RE = /^\.?(INT\.|EXT\.|INT\/EXT\.|I\/E\.)/i
 
@@ -48,10 +48,12 @@ function computeSceneMarkers(view: EditorView): { from: number; marker: SceneNum
 }
 
 /** ViewPlugin that recomputes scene numbers on document changes. */
-const sceneNumberPlugin = ViewPlugin.define(view => {
+const sceneNumberPlugin = ViewPlugin.define((view) => {
   let markers = computeSceneMarkers(view)
   return {
-    get markers() { return markers },
+    get markers() {
+      return markers
+    },
     update(update: ViewUpdate) {
       if (update.docChanged) {
         markers = computeSceneMarkers(update.view)
@@ -65,9 +67,7 @@ const sceneNumberGutter = gutter({
   markers(view) {
     const plugin = view.plugin(sceneNumberPlugin)
     if (!plugin) return RangeSet.empty
-    return RangeSet.of(
-      plugin.markers.map(m => m.marker.range(m.from))
-    )
+    return RangeSet.of(plugin.markers.map((m) => m.marker.range(m.from)))
   },
 })
 

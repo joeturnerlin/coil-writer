@@ -159,7 +159,10 @@ function CheatSheetPanel({ onClose }: { onClose: () => void }) {
         </Section>
 
         <Section title="Tab Cycling">
-          <Shortcut keys="Tab" desc="Cycle: action → scene heading → character → dialogue → parenthetical → transition" />
+          <Shortcut
+            keys="Tab"
+            desc="Cycle: action → scene heading → character → dialogue → parenthetical → transition"
+          />
           <Shortcut keys="Shift+Tab" desc="Reverse cycle" />
           <Desc text="Tab transforms the current line between all element types using Fountain prefixes. Case is never changed — character names, scene headings, and transitions display uppercase via CSS." />
         </Section>
@@ -239,9 +242,7 @@ function Tip({ prefix, desc, example }: { prefix: string; desc: string; example?
       </code>
       <span style={{ color: 'var(--text-secondary)' }}>
         {desc}
-        {example && (
-          <span style={{ color: 'var(--text-dim)', marginLeft: '6px', fontSize: '10px' }}>{example}</span>
-        )}
+        {example && <span style={{ color: 'var(--text-dim)', marginLeft: '6px', fontSize: '10px' }}>{example}</span>}
       </span>
     </div>
   )

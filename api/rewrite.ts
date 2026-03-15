@@ -6,6 +6,8 @@
  * Anthropic/OpenAI require the user to provide their own key.
  */
 
+import { checkRateLimit, RateLimitError } from './rate-limit'
+
 export const config = { runtime: 'edge' }
 
 interface RewriteRequest {
@@ -33,12 +35,16 @@ export default async function handler(req: Request) {
     return new Response('Method not allowed', { status: 405 })
   }
 
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0] ?? 'unknown'
+
   let body: RewriteRequest
   try {
     body = await req.json()
   } catch {
     return new Response('Invalid JSON', { status: 400 })
   }
+
+  const hasApiKey = Boolean(body.apiKey)
 
   const { selectedText, surroundingContext, instruction, provider, model, systemPromptOverride } = body
 
@@ -68,15 +74,40 @@ ${selectedText}
 ${instruction || 'Rewrite this to be more compelling and vivid.'}`
 
   try {
+    const { remaining } = await checkRateLimit(ip, 'rewrite', hasApiKey)
+
+    let response: Response
     if (provider === 'google') {
-      return await proxyGemini(systemPrompt, userPrompt, model, body.apiKey)
+      response = await proxyGemini(systemPrompt, userPrompt, model, body.apiKey)
     } else if (provider === 'anthropic') {
-      return await proxyAnthropic(systemPrompt, userPrompt, model, body.apiKey)
+      response = await proxyAnthropic(systemPrompt, userPrompt, model, body.apiKey)
     } else if (provider === 'openai') {
-      return await proxyOpenAI(systemPrompt, userPrompt, model, body.apiKey)
+      response = await proxyOpenAI(systemPrompt, userPrompt, model, body.apiKey)
+    } else {
+      return new Response(`Unknown provider: ${provider}`, { status: 400 })
     }
-    return new Response(`Unknown provider: ${provider}`, { status: 400 })
+
+    // Clone response to add usage header
+    const headers = new Headers(response.headers)
+    headers.set('X-Usage-Remaining', String(remaining))
+    return new Response(response.body, {
+      status: response.status,
+      headers,
+    })
   } catch (err) {
+    if (err instanceof RateLimitError) {
+      return new Response(
+        JSON.stringify({
+          error: err.message,
+          feature: err.feature,
+          resetAt: err.resetAt,
+        }),
+        {
+          status: 429,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
+    }
     const message = err instanceof Error ? err.message : 'Unknown error'
     return new Response(JSON.stringify({ error: message }), {
       status: 502,

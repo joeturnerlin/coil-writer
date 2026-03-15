@@ -1,4 +1,6 @@
 import {
+  Archive,
+  BarChart3,
   ChevronDown,
   Download,
   FileJson,
@@ -10,20 +12,20 @@ import {
   Pen,
   Printer,
   Settings,
-  Sparkles,
   Upload,
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { importFile, exportFile } from '../lib/converters/registry'
+import { exportFile, importFile } from '../lib/converters/registry'
 import { exportAnnotatedFountain, exportAnnotationsJSON } from '../lib/export'
-import { openScriptFile, downloadFile, saveFountainFile } from '../lib/file-io'
-import { CheatSheetButton } from './CheatSheet'
+import { downloadFile, openScriptFile, saveFountainFile } from '../lib/file-io'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
 import { useSettingsStore } from '../store/settings-store'
+import { useStashStore } from '../store/stash-store'
 import { PRESET_LIST } from '../themes/presets'
+import { CheatSheetButton } from './CheatSheet'
 
 interface ToolbarProps {
   onToggleFocus: () => void
@@ -33,7 +35,17 @@ interface ToolbarProps {
 
 export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarProps) {
   const { fileName, content } = useEditorStore()
-  const { preset, toggleTheme, zoomLevel, zoomIn, zoomOut, editorMode, setEditorMode, showEpisodeNav, toggleEpisodeNav } = useSettingsStore()
+  const {
+    preset,
+    toggleTheme,
+    zoomLevel,
+    zoomIn,
+    zoomOut,
+    editorMode,
+    setEditorMode,
+    showEpisodeNav,
+    toggleEpisodeNav,
+  } = useSettingsStore()
   const { annotations } = useAnnotationStore()
   const [showExportMenu, setShowExportMenu] = useState(false)
   const exportMenuRef = useRef<HTMLDivElement>(null)
@@ -183,9 +195,16 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
                 fontFamily: 'inherit',
                 fontSize: 'inherit',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-              onClick={() => { handleSaveFountain(); setShowExportMenu(false) }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--bg-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+              onClick={() => {
+                handleSaveFountain()
+                setShowExportMenu(false)
+              }}
               type="button"
             >
               Save as Fountain (.fountain)
@@ -204,8 +223,12 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
                 fontFamily: 'inherit',
                 fontSize: 'inherit',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--bg-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
               onClick={handleExportFDX}
               type="button"
             >
@@ -227,8 +250,12 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
                 fontFamily: 'inherit',
                 fontSize: 'inherit',
               }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--bg-hover)' }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--bg-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
               onClick={handlePrintPDF}
               type="button"
             >
@@ -257,19 +284,19 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
             gap: '5px',
             padding: '4px 12px',
             fontSize: '11px',
-            fontWeight: editorMode === 'edit' ? 600 : 400,
-            background: editorMode === 'edit' ? 'var(--accent-green)' : 'transparent',
-            color: editorMode === 'edit' ? 'var(--accent-green-text)' : 'var(--text-dim)',
+            fontWeight: editorMode === 'write' ? 600 : 400,
+            background: editorMode === 'write' ? 'var(--mode-write-bg)' : 'transparent',
+            color: editorMode === 'write' ? 'var(--mode-write-text)' : 'var(--text-dim)',
             border: 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
             fontFamily: 'inherit',
           }}
-          onClick={() => setEditorMode('edit')}
+          onClick={() => setEditorMode('write')}
           type="button"
         >
           <Pen size={12} />
-          Edit
+          Write
         </button>
         <button
           style={{
@@ -278,19 +305,19 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
             gap: '5px',
             padding: '4px 12px',
             fontSize: '11px',
-            fontWeight: editorMode === 'annotate' ? 600 : 400,
-            background: editorMode === 'annotate' ? 'var(--accent-blue)' : 'transparent',
-            color: editorMode === 'annotate' ? 'var(--accent-blue-text)' : 'var(--text-dim)',
+            fontWeight: editorMode === 'analyze' ? 600 : 400,
+            background: editorMode === 'analyze' ? 'var(--mode-analyze-bg)' : 'transparent',
+            color: editorMode === 'analyze' ? 'var(--mode-analyze-text)' : 'var(--text-dim)',
             border: 'none',
             cursor: 'pointer',
             transition: 'all 0.15s ease',
             fontFamily: 'inherit',
           }}
-          onClick={() => setEditorMode('annotate')}
+          onClick={() => setEditorMode('analyze')}
           type="button"
         >
-          <Sparkles size={12} />
-          AI Assist
+          <BarChart3 size={12} />
+          Analyze
         </button>
       </div>
 
@@ -369,6 +396,13 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
         onClick={onToggleFocus}
         icon={focusMode ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
         title={focusMode ? 'Exit focus' : 'Focus mode'}
+      />
+
+      {/* Stash toggle */}
+      <ToolbarButton
+        onClick={() => useStashStore.getState().toggleOpen()}
+        icon={<Archive size={14} />}
+        title="Toggle stash drawer"
       />
 
       {/* Cheat sheet */}

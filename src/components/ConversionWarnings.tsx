@@ -83,8 +83,7 @@ export function ConversionWarnings({ warnings, format, onDismiss }: ConversionWa
               key={i}
               style={{
                 padding: '4px 0',
-                color:
-                  w.severity === 'error' ? '#f87171' : w.severity === 'warning' ? '#fbbf24' : 'var(--text-muted)',
+                color: w.severity === 'error' ? '#f87171' : w.severity === 'warning' ? '#fbbf24' : 'var(--text-muted)',
                 borderBottom: i < warnings.length - 1 ? '1px solid var(--border-color)' : undefined,
               }}
             >

@@ -3,7 +3,9 @@ import { useCallback, useState } from 'react'
 import { importFile } from '../lib/converters/registry'
 import { openScriptFile } from '../lib/file-io'
 import { getRecoveredDocument } from '../lib/persistence'
+import { SAMPLE_SCRIPT_CONTENT, SAMPLE_SCRIPT_FILENAME } from '../lib/sample-script'
 import { useEditorStore } from '../store/editor-store'
+import { useOnboardingStore } from '../store/onboarding-store'
 
 const ACCEPTED_EXTENSIONS = ['.fountain', '.txt', '.fdx', '.fadein', '.highland', '.wdz', '.celtx']
 
@@ -82,12 +84,8 @@ export function FileDropZone() {
         onClick={handleClick}
       >
         <Upload size={48} style={{ margin: '0 auto 16px', color: 'var(--text-dim)' }} />
-        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-          Drop a script file here
-        </p>
-        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-          .fountain .fdx .fadein .highland .wdz .celtx
-        </p>
+        <p style={{ fontSize: '14px', color: 'var(--text-secondary)', marginBottom: '8px' }}>Drop a script file here</p>
+        <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>.fountain .fdx .fadein .highland .wdz .celtx</p>
         <div
           style={{
             marginTop: '24px',
@@ -119,6 +117,27 @@ export function FileDropZone() {
           type="button"
         >
           Recover last session
+        </button>
+        <br />
+        <button
+          style={{
+            marginTop: '8px',
+            fontSize: '11px',
+            fontFamily: "'JetBrains Mono', monospace",
+            textDecoration: 'underline',
+            color: 'var(--accent-cyan)',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+          }}
+          onClick={(e) => {
+            e.stopPropagation()
+            useEditorStore.getState().openFile(SAMPLE_SCRIPT_FILENAME, SAMPLE_SCRIPT_CONTENT)
+            useOnboardingStore.getState().startTour()
+          }}
+          type="button"
+        >
+          Try a sample script
         </button>
       </div>
     </div>
