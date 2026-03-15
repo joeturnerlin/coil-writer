@@ -1,5 +1,5 @@
 import { Sparkles, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { setSubtextFlags } from '../editor/subtext-decorations'
 import { type ContinuityResult, checkContinuity } from '../lib/continuity-check'
 import { analyzeSubtext } from '../lib/subtext-analysis'
@@ -20,6 +20,13 @@ export function CharacterHub() {
   const triggerAnalysis = useAnalysis()
   const isAnalyzing = analysisState.status === 'analyzing' || analysisState.status === 'sending'
   const { canUse, remainingUses, incrementUsage } = useSubscriptionStore()
+
+  // Sync cached profile into character store on mount
+  useEffect(() => {
+    if (currentProfile && currentProfile.characters.length > 0 && baseProfiles.length === 0) {
+      useCharacterStore.getState().setBaseProfiles(currentProfile.characters)
+    }
+  }, [currentProfile, baseProfiles.length])
 
   const [expandedCharacter, setExpandedCharacter] = useState<string | null>(null)
   const [subtextTooltip, setSubtextTooltip] = useState<string | null>(null)
