@@ -131,19 +131,28 @@ export async function analyzeScript(
 ): Promise<VoiceProfile> {
   const sourceHash = await hashScript(scriptContent)
 
-  // Check cache first
+  // Check cache first — normalize cached data to handle old/incomplete profiles
   const cached = await getVoiceProfile(sourceHash)
   if (cached) {
     try {
       const parsed = JSON.parse(cached)
-      // Validate cached data has required structure
       if (parsed?.characters && Array.isArray(parsed.characters) && parsed.characters.length > 0) {
+        // Normalize cached characters (old cache may have missing fields)
+        parsed.characters = parsed.characters.map((c: Record<string, unknown>) => ({
+          ...c,
+          forbidden_patterns: Array.isArray(c.forbidden_patterns) ? c.forbidden_patterns : [],
+          vocabulary: Array.isArray(c.vocabulary) ? c.vocabulary : [],
+          syntax: Array.isArray(c.syntax) ? c.syntax : [],
+          rhetoric: Array.isArray(c.rhetoric) ? c.rhetoric : [],
+          rhythm: c.rhythm || { length_bucket: 'moderate', patterns: [] },
+          profanity_register: c.profanity_register || 'none',
+          formality_axis: c.formality_axis || 'neutral',
+        }))
+        if (!Array.isArray(parsed.convergence_warnings)) parsed.convergence_warnings = []
         return parsed as VoiceProfile
       }
-      // Bad cache — delete it
       await deleteVoiceProfile(sourceHash)
     } catch {
-      // Corrupt cache — delete it
       await deleteVoiceProfile(sourceHash)
     }
   }
@@ -190,7 +199,15 @@ export async function analyzeScriptViaProxy(scriptContent: string, signal?: Abor
 
   const cached = await getVoiceProfile(sourceHash)
   if (cached) {
-    return JSON.parse(cached) as VoiceProfile
+    try {
+      const parsed = JSON.parse(cached)
+      if (parsed?.characters && Array.isArray(parsed.characters)) {
+        return normalizeProfile(parsed)
+      }
+      await deleteVoiceProfile(sourceHash)
+    } catch {
+      await deleteVoiceProfile(sourceHash)
+    }
   }
 
   const response = await fetch('/api/analyze', {
@@ -218,10 +235,35 @@ export async function analyzeScriptViaProxy(scriptContent: string, signal?: Abor
 /**
  * Build a summary string for the analysis completion message.
  */
+/** Normalize a profile object to ensure all required arrays exist */
+function normalizeProfile(parsed: Record<string, unknown>): VoiceProfile {
+  const chars = Array.isArray(parsed.characters) ? parsed.characters : []
+  return {
+    schema_version: '1.0.0',
+    source_hash: String(parsed.source_hash || ''),
+    generated_at: String(parsed.generated_at || ''),
+    model_id: String(parsed.model_id || ''),
+    characters: chars.map((c: Record<string, unknown>) => ({
+      name: String(c.name || 'UNKNOWN'),
+      forbidden_patterns: Array.isArray(c.forbidden_patterns) ? c.forbidden_patterns : [],
+      vocabulary: Array.isArray(c.vocabulary) ? c.vocabulary : [],
+      syntax: Array.isArray(c.syntax) ? c.syntax : [],
+      rhetoric: Array.isArray(c.rhetoric) ? c.rhetoric : [],
+      rhythm: c.rhythm && typeof c.rhythm === 'object'
+        ? c.rhythm as VoiceProfile['characters'][0]['rhythm']
+        : { length_bucket: 'moderate' as const, patterns: [] },
+      profanity_register: (c.profanity_register || 'none') as VoiceProfile['characters'][0]['profanity_register'],
+      formality_axis: (c.formality_axis || 'neutral') as VoiceProfile['characters'][0]['formality_axis'],
+    })),
+    convergence_warnings: Array.isArray(parsed.convergence_warnings) ? parsed.convergence_warnings : [],
+  }
+}
+
 export function buildAnalysisSummary(profile: VoiceProfile): string {
-  const charCount = profile.characters.length
-  const forbiddenCount = profile.characters.reduce((sum, c) => sum + c.forbidden_patterns.length, 0)
-  const warnings = profile.convergence_warnings.length
+  const chars = profile?.characters ?? []
+  const charCount = chars.length
+  const forbiddenCount = chars.reduce((sum, c) => sum + (c?.forbidden_patterns?.length ?? 0), 0)
+  const warnings = profile?.convergence_warnings?.length ?? 0
   let summary = `${charCount} character${charCount !== 1 ? 's' : ''}, ${forbiddenCount} forbidden patterns`
   if (warnings > 0) {
     summary += `, ${warnings} voice convergence warning${warnings !== 1 ? 's' : ''}`
