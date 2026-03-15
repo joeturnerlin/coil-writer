@@ -59,8 +59,10 @@ export async function analyzeStructure(
   const fw: Framework = (await import(`./frameworks/${frameworkId}.json`)).default
 
   // Build scene summaries: heading + first 2 content lines
+  // Cap at 60 scenes to avoid overwhelming the AI with very long scripts
   const sceneSummaries = scenes
     .filter((s) => s.heading)
+    .slice(0, 60)
     .map((s) => {
       const contentLines = s.content.split('\n').filter((l) => l.trim())
       const preview = contentLines.slice(0, 2).join(' ').trim()

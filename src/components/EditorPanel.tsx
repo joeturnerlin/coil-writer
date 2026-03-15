@@ -239,12 +239,12 @@ export function EditorPanel(_props: EditorPanelProps) {
   }, [fontSize, zoomLevel, viewRef])
 
   return (
-    <>
-      <div className="h-full overflow-auto" style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', height: '100%' }}>
+      <div className="h-full overflow-auto">
         <HeroSection />
         <div ref={containerRef} />
-        {isAnalyzing && <div className="analysis-scanline" />}
       </div>
-    </>
+      {isAnalyzing && <div className="analysis-scanline" />}
+    </div>
   )
 }

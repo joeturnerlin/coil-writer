@@ -208,7 +208,7 @@ export function CharacterHub() {
             const viewRef = useEditorStore.getState().viewRef
 
             // Find current scene from cursor position
-            let scene = scenes[0]
+            let scene: import('../lib/scene-model').SceneBlock | undefined = scenes[0]
             if (scenes.length > 0 && cursorLine > 0 && viewRef?.current) {
               const cursorPos = viewRef.current.state.doc.line(cursorLine).from
               for (const s of scenes) {
@@ -217,6 +217,11 @@ export function CharacterHub() {
                   break
                 }
               }
+            }
+
+            // If current scene has no dialogue (e.g. title page), find first scene with dialogue
+            if (!scene || scene.dialogueLines === 0) {
+              scene = scenes.find(s => s.dialogueLines > 0)
             }
 
             if (!scene) return

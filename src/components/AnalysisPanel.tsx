@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { analyzeScript, analyzeScriptViaProxy, buildAnalysisSummary } from '../lib/script-analysis'
 import { hashScript } from '../lib/voice-profile'
 import { useAIStore } from '../store/ai-store'
+import { useCharacterStore } from '../store/character-store'
 import { useEditorStore } from '../store/editor-store'
 
 export function AnalysisPanel() {
@@ -46,6 +47,7 @@ export function AnalysisPanel() {
 
       const hash = await hashScript(content)
       setCurrentProfile(profile, hash)
+      useCharacterStore.getState().setBaseProfiles(profile.characters)
       setAnalysisState({
         status: 'complete',
         summary: buildAnalysisSummary(profile),
@@ -192,6 +194,7 @@ export function useAnalysis() {
 
       const hash = await hashScript(content)
       setCurrentProfile(profile, hash)
+      useCharacterStore.getState().setBaseProfiles(profile.characters)
       setAnalysisState({
         status: 'complete',
         summary: buildAnalysisSummary(profile),
