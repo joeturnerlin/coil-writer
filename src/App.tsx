@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { AIRewritePopup } from './components/AIRewritePopup'
-import { AnalysisPanel } from './components/AnalysisPanel'
+// AnalysisPanel removed — status now in CharacterHub StatusLog
 import { ContextualLeftPanel } from './components/ContextualLeftPanel'
 import { ContextualRightPanel } from './components/ContextualRightPanel'
 import { ConversionWarnings } from './components/ConversionWarnings'
@@ -132,8 +132,7 @@ export function App() {
       {/* Dual rewrite comparison popup */}
       <DualRewritePopup />
 
-      {/* Analysis panel */}
-      <AnalysisPanel />
+      {/* Analysis panel removed — status now in CharacterHub StatusLog */}
 
       {/* Onboarding overlay */}
       {!onboardingComplete && hasDocument && tourStep !== null && <OnboardingOverlay />}

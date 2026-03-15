@@ -95,20 +95,32 @@ class SubtextDot extends GutterMarker {
   }
 
   toDOM() {
-    const el = document.createElement('div')
-    el.style.width = '6px'
-    el.style.height = '6px'
-    el.style.borderRadius = '50%'
-    el.style.margin = 'auto'
-    el.style.cursor = 'pointer'
-    el.style.background = 'var(--subtext-dot)'
-    el.style.opacity = this.flag.confidence === 'high' ? '0.9' : '0.5'
-    el.title = `${this.flag.category}: ${this.flag.explanation}`
-    el.addEventListener('click', (e) => {
+    // Outer element = 20px hit target
+    const wrapper = document.createElement('div')
+    wrapper.style.width = '20px'
+    wrapper.style.height = '20px'
+    wrapper.style.display = 'flex'
+    wrapper.style.alignItems = 'center'
+    wrapper.style.justifyContent = 'center'
+    wrapper.style.cursor = 'pointer'
+    wrapper.style.margin = 'auto'
+
+    // Inner dot = 10px visible dot
+    const dot = document.createElement('div')
+    dot.style.width = '10px'
+    dot.style.height = '10px'
+    dot.style.borderRadius = '50%'
+    dot.style.background = 'var(--subtext-dot)'
+    dot.style.opacity = this.flag.confidence === 'high' ? '0.9' : '0.5'
+    dot.style.boxShadow = this.flag.confidence === 'high' ? '0 0 4px var(--subtext-dot)' : 'none'
+
+    wrapper.title = `${this.flag.category}: ${this.flag.explanation}`
+    wrapper.appendChild(dot)
+    wrapper.addEventListener('click', (e) => {
       e.stopPropagation()
-      showSubtextPopover(this.flag, el)
+      showSubtextPopover(this.flag, wrapper)
     })
-    return el
+    return wrapper
   }
 
   eq(other: SubtextDot) {
@@ -166,8 +178,8 @@ const subtextGutter = gutter({
 
 const gutterTheme = EditorView.baseTheme({
   '.cm-subtext-gutter': {
-    width: '12px',
-    minWidth: '12px',
+    width: '22px',
+    minWidth: '22px',
   },
   '.cm-subtext-gutter .cm-gutterElement': {
     display: 'flex',
