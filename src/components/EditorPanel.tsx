@@ -1,9 +1,7 @@
-import { EditorView } from '@codemirror/view'
 import { useCallback, useEffect, useRef } from 'react'
 import { annotationField } from '../editor/annotation-state'
 import {
   createEditorExtensions,
-  fontSizeCompartment,
   subtextCompartment,
   themeCompartment,
 } from '../editor/editor-setup'
@@ -16,7 +14,6 @@ import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
 import { useScriptStore } from '../store/script-store'
 import { useSettingsStore } from '../store/settings-store'
-import { HeroSection } from './HeroSection'
 
 interface EditorPanelProps {
   focusMode: boolean
@@ -25,7 +22,7 @@ interface EditorPanelProps {
 export function EditorPanel(_props: EditorPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const { content, fileName, setStats, setCursorLine, updateContent } = useEditorStore()
-  const { theme, fontSize, zoomLevel, editorMode } = useSettingsStore()
+  const { theme, zoomLevel, editorMode } = useSettingsStore()
   const analysisStatus = useAIStore((s) => s.analysisState.status)
   const isAnalyzing = analysisStatus === 'sending' || analysisStatus === 'analyzing'
 
@@ -122,7 +119,7 @@ export function EditorPanel(_props: EditorPanelProps) {
     [setStats, setCursorLine, updateContent],
   )
 
-  const extensions = createEditorExtensions(theme, 'write', 14, onUpdate)
+  const extensions = createEditorExtensions(theme, 'write', onUpdate)
   const viewRef = useCodeMirror(containerRef, content ?? '', extensions)
 
   // Load new content into CM6 when a different file is opened
@@ -219,29 +216,17 @@ export function EditorPanel(_props: EditorPanelProps) {
     })
   }, [editingAnnotation, viewRef])
 
-  // Apply zoom: font size via CM6 compartment (triggers line-height recalc),
-  // layout scale via CSS variable (margins, maxWidth, spacing scale proportionally
-  // so line wrapping stays constant across zoom levels — true magnification).
+  // Apply zoom: layout scale via CSS variable (margins, maxWidth, spacing scale
+  // proportionally so line wrapping stays constant across zoom levels).
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
-    const zoomFactor = zoomLevel / 100
-    const effectiveSize = Math.round(fontSize * zoomFactor)
-    view.dom.style.setProperty('--zoom-scale', String(zoomFactor))
-    view.dispatch({
-      effects: fontSizeCompartment.reconfigure(
-        EditorView.theme({
-          '&': { fontSize: `${effectiveSize}px` },
-          '.cm-content': { fontSize: `${effectiveSize}px` },
-        }),
-      ),
-    })
-  }, [fontSize, zoomLevel, viewRef])
+    view.dom.style.setProperty('--zoom-scale', String(zoomLevel / 100))
+  }, [zoomLevel, viewRef])
 
   return (
     <div style={{ position: 'relative', height: '100%' }}>
       <div className="h-full overflow-auto">
-        <HeroSection />
         <div ref={containerRef} />
       </div>
       {isAnalyzing && <div className="analysis-scanline" />}

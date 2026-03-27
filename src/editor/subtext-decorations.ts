@@ -142,6 +142,16 @@ const subtextField = StateField.define<SubtextFlag[]>({
   update(state, tr) {
     let flags = state
 
+    // Map line numbers through document changes so dots stay aligned after edits
+    if (tr.docChanged && flags.length > 0) {
+      flags = flags.map((flag) => {
+        if (flag.lineNumber < 1 || flag.lineNumber > tr.startState.doc.lines) return flag
+        const oldPos = tr.startState.doc.line(flag.lineNumber).from
+        const newPos = tr.changes.mapPos(oldPos)
+        return { ...flag, lineNumber: tr.state.doc.lineAt(newPos).number }
+      })
+    }
+
     for (const effect of tr.effects) {
       if (effect.is(setSubtextFlags)) {
         flags = effect.value

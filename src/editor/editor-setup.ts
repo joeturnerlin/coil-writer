@@ -26,21 +26,9 @@ export const themeCompartment = new Compartment()
 export const readOnlyCompartment = new Compartment()
 
 /**
- * Font size compartment — allows runtime font size changes.
- */
-export const fontSizeCompartment = new Compartment()
-
-/**
  * Subtext compartment — holds subtext gutter decorations in Analyze mode, empty in Write mode.
  */
 export const subtextCompartment = new Compartment()
-
-function fontSizeTheme(size: number) {
-  return EditorView.theme({
-    '&': { fontSize: `${size}px` },
-    '.cm-content': { fontSize: `${size}px` },
-  })
-}
 
 /**
  * Creates the full set of CM6 extensions for the Fountain editor.
@@ -53,7 +41,6 @@ function fontSizeTheme(size: number) {
 export function createEditorExtensions(
   theme: 'dark' | 'light' = 'dark',
   mode: EditorMode = 'write',
-  fontSize = 14,
   onUpdate?: (update: { doc: string; cursorLine: number; selection: { from: number; to: number } }) => void,
 ): Extension[] {
   const themeExtension = theme === 'dark' ? fountainDarkTheme : fountainLightTheme
@@ -65,7 +52,6 @@ export function createEditorExtensions(
     // Themes
     fountainBaseTheme,
     themeCompartment.of(themeExtension),
-    fontSizeCompartment.of(fontSizeTheme(fontSize)),
 
     // Decorations (THREE separate providers — never mix)
     fountainLineDecorations,

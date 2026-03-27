@@ -13,7 +13,7 @@ export function StatsBar() {
   const remaining = remainingUses('rewrite')
 
   return (
-    <div
+    <footer
       className="flex items-center justify-between px-4 py-1"
       style={{
         background: 'var(--bg-secondary)',
@@ -44,6 +44,6 @@ export function StatsBar() {
           </span>
         )}
       </div>
-    </div>
+    </footer>
   )
 }
