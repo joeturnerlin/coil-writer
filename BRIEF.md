@@ -6,7 +6,7 @@ You are building this end to end in this folder. Work autonomously. Before askin
 Coil (this repo: a React + CodeMirror Fountain screenplay editor, deployed as a web app from the same code) also ships as a native macOS app built with Electron: the same UI, pixel for pixel, with its AI features working locally and no longer defaulting to Gemini.
 
 ## Context
-- This folder is a git worktree of `github.com:joeturnerlin/coil-writer` (branch `mac-app`, based on local `main` 2cbb4dc). The web app is deployed to Vercel from `main`; that deployment must keep working unchanged from this same code.
+- This folder is a standalone clone of `github.com:joeturnerlin/coil-writer` (branch `mac-app`, based on local `main` 2cbb4dc). The web app is deployed to Vercel from `main`; that deployment must keep working unchanged from this same code.
 - Read-only sources (never modify): `/Users/joeturnerlin/CLAUDE_PROJECTS/recoil/fountain-editor` (the primary checkout; its untracked `DESIGN_SYSTEM.md`, `BUILD_SPEC.md`, `PITCH.md` describe the intended look and features — read them if useful).
 - Ignore: `node_modules/`, `dist/`, `e2e/screenshots/`, `test-results/`.
 - Verified facts:
