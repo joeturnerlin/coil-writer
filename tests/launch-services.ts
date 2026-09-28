@@ -75,8 +75,8 @@ export async function launchThroughServices(profile: string, document?: string) 
   const log = path.join(await mkdtemp(path.resolve('verification/runs/services-quit-')), 'lifecycle.log')
   let browser: Browser | undefined
   try {
-    await exec('/usr/bin/open', ['-n', '-a', bundle, '--args', `--user-data-dir=${profile}`,
-      `--inspect=127.0.0.1:${inspectPort}`, `--remote-debugging-port=${browserPort}`, ...(document ? [document] : [])])
+    await exec('/usr/bin/open', ['-n', '-a', bundle, ...(document ? [document] : []), '--args', `--user-data-dir=${profile}`,
+      `--inspect=127.0.0.1:${inspectPort}`, `--remote-debugging-port=${browserPort}`, '--force-color-profile=srgb'])
     await expect.poll(() => matchingProcesses(profile), { timeout: 10000 }).toHaveLength(1)
     const [pid] = await matchingProcesses(profile)
     for (const port of [inspectPort, browserPort]) {
@@ -97,6 +97,17 @@ export async function launchThroughServices(profile: string, document?: string) 
     return {
       page,
       evaluate: (expression: string) => evaluate(inspectPort, expression),
+      async secondInstance(document: string) {
+        await evaluate(inspectPort, `globalThis.secondInstances = 0; require('electron').app.once('second-instance', () => globalThis.secondInstances++)`)
+        try {
+          await exec('/usr/bin/open', ['-n', '-a', bundle, '--args', `--user-data-dir=${profile}`, document])
+          await expect.poll(() => evaluate(inspectPort, 'globalThis.secondInstances'), { timeout: 10000 }).toBe(1)
+          await expect.poll(() => matchingProcesses(profile), { timeout: 10000 }).toEqual([pid])
+        } finally {
+          // Preserve a failure while cleaning only any extra process we launched.
+          for (const extra of await matchingProcesses(profile)) if (extra !== pid) process.kill(extra, 'SIGKILL')
+        }
+      },
       async quit() {
         try {
           expect(await matchingProcesses()).toEqual([pid])

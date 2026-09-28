@@ -40,13 +40,6 @@ export function OnboardingOverlay() {
 
   return (
     <div
-      tabIndex={-1}
-      onKeyDown={(event) => {
-        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-          event.preventDefault()
-          event.currentTarget.click()
-        }
-      }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -102,9 +95,9 @@ export function OnboardingOverlay() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           {/* Progress dots */}
           <div style={{ display: 'flex', gap: 6 }}>
-            {TOUR_STEPS.map((tour, i) => (
+            {TOUR_STEPS.map((_, i) => (
               <div
-                key={tour.title}
+                key={i}
                 style={{
                   width: 6,
                   height: 6,

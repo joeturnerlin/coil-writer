@@ -101,13 +101,6 @@ export function CharacterCard({ characterName, isExpanded, onToggle }: Character
   if (!isExpanded) {
     return (
       <div
-        tabIndex={-1}
-        onKeyDown={(event) => {
-          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-            event.preventDefault()
-            event.currentTarget.click()
-          }
-        }}
         style={{
           padding: 'var(--card-padding)',
           margin: '0 var(--card-margin-x) var(--card-margin-b)',
@@ -234,13 +227,6 @@ export function CharacterCard({ characterName, isExpanded, onToggle }: Character
     >
       {/* Header row (clickable to collapse) */}
       <div
-        tabIndex={-1}
-        onKeyDown={(event) => {
-          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-            event.preventDefault()
-            event.currentTarget.click()
-          }
-        }}
         style={{
           display: 'flex',
           alignItems: 'center',

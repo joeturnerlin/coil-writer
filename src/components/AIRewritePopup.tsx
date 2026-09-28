@@ -250,7 +250,7 @@ export function AIRewritePopup() {
                 handleReroll()
               }
             }}
-            ref={focusInstruction}
+            autoFocus
           />
         </div>
 
@@ -366,14 +366,7 @@ export function AIRewritePopup() {
 
             {suggestions.map((s, i) => (
               <div
-                tabIndex={-1}
-                onKeyDown={(event) => {
-                  if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-                    event.preventDefault()
-                    event.currentTarget.click()
-                  }
-                }}
-                key={`${s.text}:${i}`}
+                key={i}
                 style={{
                   marginBottom: '8px',
                   padding: '14px',
@@ -475,8 +468,4 @@ export function AIRewritePopup() {
       </div>
     </div>
   )
-}
-
-function focusInstruction(input: HTMLInputElement | null) {
-  input?.focus()
 }

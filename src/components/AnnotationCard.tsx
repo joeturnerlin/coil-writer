@@ -68,17 +68,10 @@ export function AnnotationCard({ annotation }: AnnotationCardProps) {
   }
 
   const truncatedText =
-    annotation.selectedText.length > 80 ? `${annotation.selectedText.slice(0, 80)}...` : annotation.selectedText
+    annotation.selectedText.length > 80 ? annotation.selectedText.slice(0, 80) + '...' : annotation.selectedText
 
   return (
     <div
-      tabIndex={-1}
-      onKeyDown={(event) => {
-        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-          event.preventDefault()
-          event.currentTarget.click()
-        }
-      }}
       style={{
         background: isSelected ? 'var(--accent-blue)' : 'var(--bg-tertiary)',
         border: `1px solid ${isSelected ? 'var(--accent-blue-text)' : 'var(--border-color)'}`,

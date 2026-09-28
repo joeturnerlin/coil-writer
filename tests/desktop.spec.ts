@@ -2,6 +2,7 @@ import { _electron as electron, expect, test } from '@playwright/test'
 import type { ElectronApplication, Page } from '@playwright/test'
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { createServer } from 'node:http'
 import pixelmatch from 'pixelmatch'
 import { PNG } from 'pngjs'
 import { editorContent, launchThroughServices, persistedContent } from './launch-services'
@@ -12,7 +13,7 @@ const parity = path.resolve('verification/parity')
 const viewport = { width: 1280, height: 800 }
 async function launch(args: string[] = [], profile?: string) {
   const userData = profile ?? await mkdtemp(path.resolve('verification/runs/profile-'))
-  const app = await electron.launch({ executablePath, env: { ...process.env, UPSTASH_REDIS_REST_URL: 'https://redis-must-not-be-contacted.invalid', UPSTASH_REDIS_REST_TOKEN: 'mock-redis-token' }, args: [`--user-data-dir=${userData}`, '--force-device-scale-factor=1', ...args] })
+  const app = await electron.launch({ executablePath, env: { ...process.env, UPSTASH_REDIS_REST_URL: 'https://redis-must-not-be-contacted.invalid', UPSTASH_REDIS_REST_TOKEN: 'mock-redis-token' }, args: [`--user-data-dir=${userData}`, '--force-device-scale-factor=1', '--force-color-profile=srgb', ...args] })
   app.process().stderr?.on('data', (data) => { const line = String(data); if (line.includes('Coil:')) console.log(line) })
   const page = await app.firstWindow()
   page.on('pageerror', (error) => console.log('RENDERER ERROR', error.message))
@@ -104,18 +105,34 @@ test('packaged app matches web pixels and executes native Open, Rewrite and Anal
     await (await chooser).setFiles(fixture)
     await prepareScreenshot(web)
     await web.screenshot({ path: `${parity}/web.png`, scale: 'css', animations: 'disabled' })
+    expect(await app.evaluate(({ app }) => app.commandLine.getSwitchValue('force-color-profile'))).toBe('srgb')
     await page.screenshot({ path: `${parity}/mac.png`, scale: 'css', animations: 'disabled' })
     const mac = PNG.sync.read(await readFile(`${parity}/mac.png`))
     const browser = PNG.sync.read(await readFile(`${parity}/web.png`))
     expect([mac.width, mac.height]).toEqual([browser.width, browser.height])
     const diff = new PNG({ width: mac.width, height: mac.height })
-    const pixels = pixelmatch(mac.data, browser.data, diff.data, mac.width, mac.height, { threshold: 0.1 })
+    const pixels = pixelmatch(mac.data, browser.data, diff.data, mac.width, mac.height, { threshold: 0.01, includeAA: false })
     const ratio = pixels / (mac.width * mac.height)
+    // Full-intensity accent pixels cannot hide behind the aggregate AA budget.
+    const accents = [[0, 240, 255], [232, 160, 64]].map((rgb) => {
+      let samples = 0
+      let maxChannelDelta = 0
+      for (let i = 0; i < browser.data.length; i += 4) {
+        if (!rgb.every((value, channel) => browser.data[i + channel] === value)) continue
+        samples++
+        for (let channel = 0; channel < 3; channel++) maxChannelDelta = Math.max(maxChannelDelta, Math.abs(mac.data[i + channel] - rgb[channel]))
+      }
+      return { rgb, samples, maxChannelDelta }
+    })
     await writeFile(`${parity}/diff.png`, PNG.sync.write(diff))
-    const result = { width: mac.width, height: mac.height, differentPixels: pixels, ratio, maximumRatio: 0.01, pixelmatchThreshold: 0.1 }
+    const result = { width: mac.width, height: mac.height, differentPixels: pixels, ratio, maximumRatio: 0.0005, pixelmatchThreshold: 0.01, includeAA: false, colorProfile: 'srgb', maximumAccentChannelDelta: 1, accents }
     await writeFile(`${parity}/result.json`, `${JSON.stringify(result, null, 2)}\n`)
     console.log('PARITY', JSON.stringify(result))
-    expect(ratio).toBeLessThanOrEqual(0.01)
+    expect(ratio).toBeLessThanOrEqual(0.0005)
+    for (const accent of accents) {
+      expect(accent.samples).toBeGreaterThan(300)
+      expect(accent.maxChannelDelta).toBeLessThanOrEqual(1)
+    }
 
     await page.getByTitle('Settings', { exact: true }).click()
     await expect(page.getByRole('combobox').nth(0)).toHaveValue('anthropic')
@@ -145,12 +162,13 @@ test('packaged app matches web pixels and executes native Open, Rewrite and Anal
   } finally { await quit(app) }
 })
 
-test('OS file events, cold opens, Save/Save As/Export and window state work', async () => {
+test('OS file events, Save/Save As/Export and window state work', async () => {
   const run = await mkdtemp(path.resolve('verification/runs/documents-'))
   const opened = path.join(run, 'original.fountain')
   await writeFile(opened, await readFile(fixture))
-  const { app, page, userData } = await launch([opened])
+  const { app, page, userData } = await launch()
   try {
+    await app.evaluate(({ app }, file) => { app.emit('open-file', { preventDefault() {} }, file) }, opened)
     await expect(page.locator('.cm-content')).toContainText('Every frame remembers')
     const second = path.join(run, 'second.fountain')
     await writeFile(second, 'INT. STATION - DAY\n\nThe clock has stopped.\n')
@@ -192,12 +210,26 @@ test('OS file events, cold opens, Save/Save As/Export and window state work', as
     await relaunched.firstWindow()
     expect(await relaunched.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0].getBounds())).toMatchObject({ width: 1100, height: 760 })
   } finally { await quit(relaunched) }
-  console.log('NATIVE: cold file argument, open-file event, File > Open/Save/Save As/Export, and remembered window bounds passed.')
+  console.log('NATIVE: open-file event, File > Open/Save/Save As/Export, and remembered window bounds passed.')
 })
 
-test('desktop refuses remote content, opens external links in the browser and migrates stale models without losing keys', async () => {
-  const { app, page } = await launch()
+test('desktop refuses remote content, opens external links in the browser and migrates stale models without losing keys', async ({ page: web }) => {
+  let remoteRequests = 0
+  const remote = createServer((_request, response) => {
+    remoteRequests++
+    response.setHeader('Access-Control-Allow-Origin', '*')
+    response.end('reachable remote origin')
+  })
+  await new Promise<void>((resolve) => remote.listen(0, '127.0.0.1', resolve))
+  const remoteUrl = `http://127.0.0.1:${(remote.address() as { port: number }).port}/probe`
+  let desktop: Awaited<ReturnType<typeof launch>> | undefined
   try {
+    await web.goto('/')
+    expect(await web.evaluate((url) => fetch(url, { mode: 'no-cors' }).then((response) => response.type), remoteUrl)).toBe('opaque')
+    expect(remoteRequests).toBe(1)
+    remoteRequests = 0
+    desktop = await launch()
+    const { app, page } = desktop
     await app.evaluate(({ shell }) => {
       Object.assign(globalThis, { externalUrls: [] })
       shell.openExternal = async (url) => { (globalThis as unknown as { externalUrls: string[] }).externalUrls.push(url) }
@@ -207,7 +239,16 @@ test('desktop refuses remote content, opens external links in the browser and mi
     expect(await page.evaluate(() => fetch('/api/unknown').then((response) => response.status))).toBe(404)
     expect(await page.evaluate(() => fetch('/%2e%2e%2fpackage.json').then((response) => response.status))).toBe(403)
     expect(await page.evaluate(() => fetch('/api/analyze', { method: 'POST', body: JSON.stringify({ scriptContent: 'INT. ROOM - DAY' }) }).then((response) => response.status))).toBe(400)
-    expect(await page.evaluate(() => fetch('https://example.com').then(() => 'loaded', () => 'blocked'))).toBe('blocked')
+    await page.evaluate(() => {
+      Object.assign(window, { blockedConnections: [] })
+      document.addEventListener('securitypolicyviolation', (event) => {
+        if (event.effectiveDirective === 'connect-src') (window as unknown as { blockedConnections: string[] }).blockedConnections.push(event.blockedURI)
+      })
+    })
+    expect(await page.evaluate((url) => fetch(url, { mode: 'no-cors' }).then(() => 'loaded', () => 'blocked'), remoteUrl)).toBe('blocked')
+    await expect.poll(() => page.evaluate(() => (window as unknown as { blockedConnections: string[] }).blockedConnections)).toContain(remoteUrl)
+    expect(await app.evaluate(async ({ net }, url) => net.fetch(url).then(() => 'loaded', (error) => error.message), remoteUrl)).toContain('ERR_BLOCKED_BY_CLIENT')
+    expect(remoteRequests).toBe(0)
     expect(await app.evaluate(() => (globalThis as unknown as { providerCalls: unknown[] }).providerCalls)).toHaveLength(0)
     const rateLimit = await page.evaluate(async () => {
       const response = await fetch('/api/rewrite', { method: 'POST', body: JSON.stringify({ provider: 'anthropic', model: 'claude-fable-5-1', selectedText: 'Every frame remembers something.' }) })
@@ -227,8 +268,16 @@ test('desktop refuses remote content, opens external links in the browser and mi
     await page.getByRole('checkbox').check()
     await expect(page.getByRole('combobox').nth(2)).toHaveValue('anthropic:claude-fable-5-1')
     await expect(page.getByRole('combobox').nth(3)).toHaveValue('openai:gpt-6-astra')
-    console.log('SECURITY: sandbox, local-only requests, external-link delegation, missing-key refusal, traversal refusal, and persisted-key migration passed.')
-  } finally { await quit(app) }
+    // Main-session requests have no document CSP. Removing its webRequest
+    // guard must restore access, independently proving that enforcement layer.
+    await app.evaluate(({ session }) => session.defaultSession.webRequest.onBeforeRequest(null))
+    expect(await app.evaluate(async ({ net }, url) => (await net.fetch(url)).text(), remoteUrl)).toBe('reachable remote origin')
+    expect(remoteRequests).toBe(1)
+    console.log('SECURITY: healthy no-cors control resolves; renderer reports connect-src violation; main session reports ERR_BLOCKED_BY_CLIENT; removing webRequest guard restores access.')
+  } finally {
+    try { if (desktop) await quit(desktop.app) }
+    finally { await new Promise<void>((resolve, reject) => remote.close((error) => error ? reject(error) : resolve())) }
+  }
 })
 
 
@@ -253,6 +302,14 @@ test('LaunchServices preserves normal autosaves and window bounds across five qu
   try {
     running = await launchThroughServices(profile, fixture)
     await expect(running.page.locator('.cm-content')).toContainText('Every frame remembers')
+    await running.page.evaluate(() => document.fonts.ready)
+    const nativeCapture = PNG.sync.read(await running.page.screenshot({ path: path.join(profile, 'native-srgb.png') }))
+    let cyanPixels = 0
+    for (let i = 0; i < nativeCapture.data.length; i += 4) {
+      if (nativeCapture.data[i] === 0 && nativeCapture.data[i + 1] === 240 && nativeCapture.data[i + 2] === 255) cyanPixels++
+    }
+    expect(cyanPixels).toBeGreaterThan(300)
+    console.log(`NATIVE_COLOR: LaunchServices with sRGB pinned at process launch rendered ${cyanPixels} exact cyan pixels.`)
     const markers: string[] = []
     for (let cycle = 1; cycle <= 5; cycle++) {
       const marker = `Durability marker ${path.basename(profile)} cycle ${cycle}.`
@@ -282,4 +339,21 @@ test('LaunchServices preserves normal autosaves and window bounds across five qu
       console.log(`DURABILITY ${cycle}/5: complete autosaved document and bounds restored after LaunchServices quit/relaunch; marker=${marker}`)
     }
   } finally { if (running) await running.quit() }
+})
+
+test('a second instance forwards supported documents to the existing owner', async () => {
+  const profile = await mkdtemp(path.resolve('verification/runs/single-instance-'))
+  const forwarded = path.join(profile, 'second.txt')
+  await writeFile(forwarded, 'INT. ONE OWNER - DAY\n\nOnly one process owns this draft.\n')
+  const running = await launchThroughServices(profile, fixture)
+  try {
+    await expect(running.page.locator('.cm-content')).toContainText('Every frame remembers')
+    await running.evaluate("require('electron').BrowserWindow.getAllWindows()[0].hide()")
+    await running.secondInstance(forwarded)
+    await expect(running.page.locator('.cm-content')).toContainText('Only one process owns this draft.')
+    expect(await running.evaluate("require('electron').BrowserWindow.getAllWindows()[0].isVisible()")).toBe(true)
+    await expect.poll(() => running.evaluate("require('electron').BrowserWindow.getAllWindows()[0].isFocused()")).toBe(true)
+    expect(await running.evaluate("require('electron').BrowserWindow.getAllWindows().length")).toBe(1)
+    console.log('SINGLE_INSTANCE: second launch exited; existing owner opened .txt and restored its window.')
+  } finally { await running.quit() }
 })

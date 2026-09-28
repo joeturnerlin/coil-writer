@@ -10,6 +10,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { DEFAULT_MODEL } from '../src/lib/models'
+import { requestAnthropic } from './anthropic'
 
 export const config = {
   maxDuration: 60,
@@ -80,13 +81,7 @@ ${scriptContent}
 </screenplay>`
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
-      signal: req.signal,
-      body: JSON.stringify({ model: DEFAULT_MODEL.id, max_tokens: 16384,
-        system: ANALYSIS_SYSTEM_PROMPT, messages: [{ role: 'user', content: userPrompt }] }),
-    })
+    const response = await requestAnthropic(ANALYSIS_SYSTEM_PROMPT, userPrompt, DEFAULT_MODEL.id, 16384, apiKey, req.signal)
     const data = await response.json()
     if (!response.ok) return Response.json({ error: `Anthropic ${response.status}: ${JSON.stringify(data)}` }, { status: response.status })
     const text = data.content?.filter((block: { type?: string; text?: string }) => block.text).map((block: { text: string }) => block.text).join('\n')

@@ -68,13 +68,6 @@ export function FileDropZone() {
   return (
     <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
       <div
-        tabIndex={-1}
-        onKeyDown={(event) => {
-          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-            event.preventDefault()
-            event.currentTarget.click()
-          }
-        }}
         style={{
           width: '100%',
           maxWidth: '28rem',

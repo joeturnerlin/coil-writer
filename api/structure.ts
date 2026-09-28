@@ -6,6 +6,7 @@
  * Anthropic/OpenAI require the user to provide their own key.
  */
 
+import { proxyAnthropic } from './anthropic'
 import { checkRateLimit, RateLimitError } from './rate-limit'
 
 export const config = { runtime: 'edge' }
@@ -135,47 +136,6 @@ async function proxyGemini(
   }
 
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  return new Response(JSON.stringify({ text }), {
-    headers: { 'Content-Type': 'application/json' },
-  })
-}
-
-async function proxyAnthropic(
-  system: string,
-  user: string,
-  model: string,
-  maxTokens: number,
-  clientKey?: string,
-) {
-  const apiKey = clientKey || process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    return new Response('No Anthropic API key configured', { status: 500 })
-  }
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      system,
-      messages: [{ role: 'user', content: user }],
-    }),
-  })
-
-  const data = await res.json()
-  if (!res.ok) {
-    return new Response(
-      JSON.stringify({ error: `Anthropic ${res.status}: ${JSON.stringify(data)}` }),
-      { status: res.status, headers: { 'Content-Type': 'application/json' } },
-    )
-  }
-
-  const text = data.content?.[0]?.text
   return new Response(JSON.stringify({ text }), {
     headers: { 'Content-Type': 'application/json' },
   })

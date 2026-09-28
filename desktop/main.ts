@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, shell } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron'
 import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
@@ -9,7 +9,10 @@ import { handleAnalysis } from '../api/analyze'
 import subtext from '../api/subtext'
 import structure from '../api/structure'
 import continuity from '../api/continuity'
+import { FORMAT_DESCRIPTORS } from '../src/lib/converters/registry'
 
+const ownsInstance = app.requestSingleInstanceLock()
+if (!ownsInstance) app.quit()
 protocol.registerSchemesAsPrivileged([{ scheme: 'coil', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 const origin = 'coil://app'
 const handlers: Record<string, (req: Request) => Promise<Response>> = {
@@ -24,7 +27,7 @@ const pendingCommands: string[] = []
 const documents = new Map<string, string>()
 let pendingFiles: string[] = []
 let opening = Promise.resolve()
-const filters = [{ name: 'Screenplays', extensions: ['fountain', 'txt', 'fdx', 'fadein', 'highland', 'wdz', 'celtx'] }]
+const filters = [{ name: 'Screenplays', extensions: FORMAT_DESCRIPTORS.filter((format) => format.canImport).flatMap((format) => format.extensions.map((extension) => extension.slice(1))) }]
 
 function report(error: unknown) {
   console.error('Coil:', error)
@@ -64,12 +67,20 @@ app.on('open-file', (event, filePath) => {
   openFiles([filePath])
   if (app.isReady() && !window) void ensureWindow().catch(report)
 })
+app.on('second-instance', (_event, argv, cwd) => {
+  openFiles(argv.filter((arg) => !arg.startsWith('--') && filters[0].extensions.includes(extname(arg).slice(1).toLowerCase())).map((file) => resolve(cwd, file)))
+  void ensureWindow().then(() => {
+    if (window?.isMinimized()) window.restore()
+    window?.show()
+    window?.focus()
+  }).catch(report)
+})
 
 app.on('before-quit', () => { quitting = true })
 app.on('window-all-closed', () => { /* macOS keeps the menu bar available. */ })
 
 function ensureWindow(): Promise<void> {
-  if (quitting || window) return Promise.resolve()
+  if (!ownsInstance || quitting || window) return Promise.resolve()
   if (!creating) creating = createWindow().finally(() => { creating = null })
   return creating
 }
@@ -113,7 +124,7 @@ async function createWindow() {
   current.show()
 }
 
-void app.whenReady().then(async () => {
+if (ownsInstance) void app.whenReady().then(async () => {
   const assets = resolve(__dirname, '../dist')
   protocol.handle('coil', async (req) => {
     const url = new URL(req.url)
@@ -134,10 +145,9 @@ void app.whenReady().then(async () => {
       return new Response(response.body, { status: response.status, headers })
     } catch { return new Response('Not found', { status: 404 }) }
   })
-  const session = (await import('electron')).session.defaultSession
-  session.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
-  session.setPermissionCheckHandler(() => false)
-  session.webRequest.onBeforeRequest((details, callback) => callback({ cancel: !details.url.startsWith(`${origin}/`) && !details.url.startsWith('devtools://') && !details.url.startsWith('file://') }))
+  session.defaultSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false))
+  session.defaultSession.setPermissionCheckHandler(() => false)
+  session.defaultSession.webRequest.onBeforeRequest((details, callback) => callback({ cancel: !details.url.startsWith(`${origin}/`) && !details.url.startsWith('devtools://') && !details.url.startsWith('file://') }))
 
   ipcMain.handle('coil:open', async (event) => {
     trusted(event)
@@ -187,6 +197,5 @@ void app.whenReady().then(async () => {
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(menu))
   await ensureWindow()
-  openFiles(process.argv.filter((arg) => arg.toLowerCase().endsWith('.fountain') && !arg.startsWith('--')))
   app.on('activate', () => { if (!window) void ensureWindow().catch(report) })
 }).catch(report)

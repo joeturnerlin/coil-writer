@@ -143,13 +143,6 @@ export function App() {
       {/* Focus mode escape hint */}
       {focusMode && (
         <div
-          tabIndex={-1}
-          onKeyDown={(event) => {
-            if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-              event.preventDefault()
-              event.currentTarget.click()
-            }
-          }}
           className="fixed top-4 right-4 text-xs opacity-30 hover:opacity-70 transition-opacity cursor-pointer select-none"
           style={{ color: theme === 'dark' ? '#888' : '#666' }}
           onClick={() => setFocusMode(false)}

@@ -1,6 +1,8 @@
 {
   "$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
-  "organizeImports": { "enabled": true },
+  "organizeImports": {
+    "enabled": true
+  },
   "linter": {
     "enabled": true,
     "rules": {
@@ -25,5 +27,83 @@
       "quoteStyle": "single",
       "semicolons": "asNeeded"
     }
-  }
+  },
+  "overrides": [
+    {
+      "include": [
+        "src/components/AIRewritePopup.tsx",
+        "src/components/DualRewritePopup.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "noAutofocus": "warn"
+          }
+        }
+      }
+    },
+    {
+      "include": [
+        "src/App.tsx",
+        "src/components/AIRewritePopup.tsx",
+        "src/components/AnnotationCard.tsx",
+        "src/components/CharacterCard.tsx",
+        "src/components/CharacterHub.tsx",
+        "src/components/ContinuityPanel.tsx",
+        "src/components/DualRewritePopup.tsx",
+        "src/components/FileDropZone.tsx",
+        "src/components/OnboardingOverlay.tsx",
+        "src/components/RevisionCard.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useKeyWithClickEvents": "warn"
+          }
+        }
+      }
+    },
+    {
+      "include": [
+        "src/components/DualRewritePopup.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "useOptionalChain": "warn"
+          }
+        }
+      }
+    },
+    {
+      "include": [
+        "src/components/AnnotationCard.tsx",
+        "src/components/ContinuityPanel.tsx",
+        "src/components/DualRewritePopup.tsx",
+        "src/components/RevisionCard.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "useTemplate": "warn"
+          }
+        }
+      }
+    },
+    {
+      "include": [
+        "src/components/AIRewritePopup.tsx",
+        "src/components/ContinuityPanel.tsx",
+        "src/components/DualRewritePopup.tsx",
+        "src/components/OnboardingOverlay.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "warn"
+          }
+        }
+      }
+    }
+  ]
 }

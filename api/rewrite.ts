@@ -6,6 +6,7 @@
  * Anthropic/OpenAI require the user to provide their own key.
  */
 
+import { proxyAnthropic } from './anthropic'
 import { checkRateLimit, RateLimitError } from './rate-limit'
 
 export const config = { runtime: 'edge' }
@@ -80,7 +81,7 @@ ${instruction || 'Rewrite this to be more compelling and vivid.'}`
     if (provider === 'google') {
       response = await proxyGemini(systemPrompt, userPrompt, model, body.apiKey)
     } else if (provider === 'anthropic') {
-      response = await proxyAnthropic(systemPrompt, userPrompt, model, body.apiKey)
+      response = await proxyAnthropic(systemPrompt, userPrompt, model, 2048, body.apiKey)
     } else if (provider === 'openai') {
       response = await proxyOpenAI(systemPrompt, userPrompt, model, body.apiKey)
     } else {
@@ -147,41 +148,6 @@ async function proxyGemini(system: string, user: string, model: string, clientKe
   }
 
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  return new Response(JSON.stringify({ text }), {
-    headers: { 'Content-Type': 'application/json' },
-  })
-}
-
-async function proxyAnthropic(system: string, user: string, model: string, clientKey?: string) {
-  const apiKey = clientKey || process.env.ANTHROPIC_API_KEY
-  if (!apiKey) {
-    return new Response('No Anthropic API key configured', { status: 500 })
-  }
-
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 2048,
-      system,
-      messages: [{ role: 'user', content: user }],
-    }),
-  })
-
-  const data = await res.json()
-  if (!res.ok) {
-    return new Response(JSON.stringify({ error: `Anthropic ${res.status}: ${JSON.stringify(data)}` }), {
-      status: res.status,
-      headers: { 'Content-Type': 'application/json' },
-    })
-  }
-
-  const text = data.content?.[0]?.text
   return new Response(JSON.stringify({ text }), {
     headers: { 'Content-Type': 'application/json' },
   })

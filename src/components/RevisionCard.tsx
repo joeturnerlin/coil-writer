@@ -26,7 +26,7 @@ export function RevisionCard({ revision }: RevisionCardProps) {
     view.focus()
   }
 
-  const truncate = (text: string, max: number) => (text.length > max ? `${text.slice(0, max)}...` : text)
+  const truncate = (text: string, max: number) => (text.length > max ? text.slice(0, max) + '...' : text)
 
   const labelStyle: React.CSSProperties = {
     fontSize: '9px',
@@ -39,13 +39,6 @@ export function RevisionCard({ revision }: RevisionCardProps) {
 
   return (
     <div
-      tabIndex={-1}
-      onKeyDown={(event) => {
-        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-          event.preventDefault()
-          event.currentTarget.click()
-        }
-      }}
       style={{
         padding: '10px 16px',
         borderBottom: '1px solid var(--border-color)',
