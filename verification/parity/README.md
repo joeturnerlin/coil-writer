@@ -6,4 +6,4 @@ Acceptance: pixelmatch differing-pixel ratio ≤ 0.01 (1%) with color threshold 
 
 file-open.png is captured after the real File > Open menu callback, main-process file read, preload event, and existing import/editor path. Playwright supplies the native picker result. analysis.png and rewrite.png show successful mocked provider results through the shared local API handlers; these were also visually inspected.
 
-These captures demonstrate the stated UI paths. The final Electron suite fails native shutdown on this host; see ../../BLOCKED.md and ../../VERIFICATION.md. Screenshot success is not a claim that the full suite passed.
+The full verification run passed, including five LaunchServices autosave/quit/relaunch cycles with restored document content and window bounds. See ../../VERIFICATION.md for real output and the distinction between native LaunchServices lifecycle checks and direct-exec Playwright cleanup.
