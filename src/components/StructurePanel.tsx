@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useRef, useState } from 'react'
+import { jumpTo } from '../editor/navigation'
 import type { StructureFramework } from '../editor/types'
 import type { SceneBlock } from '../lib/scene-model'
 import type { BeatMapping, GapWarning, StructureResult } from '../lib/structure-analysis'
@@ -90,10 +91,7 @@ export function StructurePanel() {
     (scene: SceneBlock) => {
       const view = viewRef?.current
       if (!view) return
-      view.dispatch({ selection: { anchor: scene.from } })
-      const lineBlock = view.lineBlockAt(scene.from)
-      view.scrollDOM.scrollTo({ top: lineBlock.top - 10, behavior: 'smooth' })
-      view.focus()
+      jumpTo(view, scene.from)
     },
     [viewRef],
   )

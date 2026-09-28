@@ -357,3 +357,31 @@ test('a second instance forwards supported documents to the existing owner', asy
     console.log('SINGLE_INSTANCE: second launch exited; existing owner opened .txt and restored its window.')
   } finally { await running.quit() }
 })
+
+test('clicking a scene or episode in the navigator scrolls the editor there', async () => {
+  const source = await readFile(path.resolve('tests/fixtures/tartarus-excerpt.fountain'), 'utf8')
+  const run = await mkdtemp(path.resolve('verification/runs/navigator-'))
+  const scenesOnly = path.join(run, 'scenes-only.fountain')
+  await writeFile(scenesOnly, source.replace(/^\[\[EPISODE[^\n]*\n/gm, ''))
+  const { app, page } = await launch()
+  const openFile = (file: string) => app.evaluate(({ app }, f) => { app.emit('open-file', { preventDefault() {} }, f) }, file)
+  const showNav = async (label: string) => {
+    const toggle = page.getByRole('button', { name: label, exact: true })
+    if ((await toggle.getAttribute('title')) === 'Show navigation') await toggle.click()
+  }
+  try {
+    await openFile(scenesOnly)
+    const shaft = page.locator('.cm-line', { hasText: 'LEVEL -33 - MAINTENANCE SHAFT' })
+    await expect(shaft).not.toBeInViewport()
+    await showNav('Scenes')
+    await page.getByRole('button', { name: /LEVEL -33/ }).first().click()
+    await expect(shaft).toBeInViewport()
+
+    await openFile(path.resolve('tests/fixtures/tartarus-excerpt.fountain'))
+    const chrome = page.locator('.cm-line', { hasText: '[[EPISODE 3: Chrome]]' })
+    await expect(chrome).not.toBeInViewport()
+    await showNav('Episodes')
+    await page.getByRole('button', { name: /Chrome/ }).first().click()
+    await expect(chrome).toBeInViewport()
+  } finally { await quit(app) }
+})
