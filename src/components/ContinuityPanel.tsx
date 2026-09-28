@@ -37,6 +37,13 @@ export function ContinuityPanel({ result, onClose }: ContinuityPanelProps) {
 
   return (
     <div
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault()
+          event.currentTarget.click()
+        }
+      }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -163,7 +170,7 @@ export function ContinuityPanel({ result, onClose }: ContinuityPanelProps) {
 
                 return (
                   <div
-                    key={i}
+                    key={`${issue.sceneIndex}:${issue.type}:${i}`}
                     style={{
                       padding: '10px 12px',
                       borderRadius: '6px',
@@ -237,7 +244,7 @@ export function ContinuityPanel({ result, onClose }: ContinuityPanelProps) {
                         }}
                         title={`Jump to ${sceneLabel}`}
                       >
-                        {sceneLabel.length > 40 ? sceneLabel.slice(0, 40) + '...' : sceneLabel}
+                        {sceneLabel.length > 40 ? `${sceneLabel.slice(0, 40)}...` : sceneLabel}
                       </button>
                     </div>
 

@@ -2,7 +2,7 @@
  * Vercel Edge Function — AI Rewrite Proxy
  *
  * Proxies rewrite requests to Gemini/Anthropic/OpenAI.
- * Gemini uses the server-side GEMINI_API_KEY by default.
+ * Google requires an explicit user key; no server-side Gemini fallback.
  * Anthropic/OpenAI require the user to provide their own key.
  */
 
@@ -16,7 +16,7 @@ interface RewriteRequest {
   instruction: string
   provider: 'google' | 'anthropic' | 'openai'
   model: string
-  apiKey?: string // Optional — server key used for Gemini if omitted
+  apiKey?: string // Google requires a user key; web Anthropic/OpenAI may use server keys.
   systemPromptOverride?: string // Optional — profile-aware system prompt from client
 }
 
@@ -117,9 +117,9 @@ ${instruction || 'Rewrite this to be more compelling and vivid.'}`
 }
 
 async function proxyGemini(system: string, user: string, model: string, clientKey?: string) {
-  const apiKey = clientKey || process.env.GEMINI_API_KEY
+  const apiKey = clientKey
   if (!apiKey) {
-    return new Response('No Gemini API key configured', { status: 500 })
+    return new Response('No Google API key. Add one in Settings.', { status: 400 })
   }
 
   const res = await fetch(

@@ -338,13 +338,22 @@ body.light .cm-annotation-mark {
 
 /* ── Analysis scanline — vertical sweep, editor-only ── */
 @keyframes scanline-sweep {
-  0% { top: 0; }
-  100% { top: 100%; }
+  0% {
+    top: 0;
+  }
+  100% {
+    top: 100%;
+  }
 }
 
 @keyframes scanline-glow {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .analysis-scanline {
@@ -361,7 +370,7 @@ body.light .cm-annotation-mark {
 
 /* The bright scan line */
 .analysis-scanline::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 5%;
   right: 5%;
@@ -369,26 +378,19 @@ body.light .cm-annotation-mark {
   background: var(--accent-cyan, #00f0ff);
   opacity: 0.7;
   border-radius: 1px;
-  box-shadow:
-    0 0 8px var(--accent-cyan, #00f0ff),
-    0 0 20px var(--accent-cyan, #00f0ff),
-    0 0 40px rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 8px var(--accent-cyan, #00f0ff), 0 0 20px var(--accent-cyan, #00f0ff), 0 0 40px rgba(0, 240, 255, 0.3);
   animation: scanline-glow 1.5s ease-in-out infinite;
 }
 
 /* Trailing glow beneath the line */
 .analysis-scanline::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
   height: 80px;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 240, 255, 0.08) 0%,
-    transparent 100%
-  );
+  background: linear-gradient(180deg, rgba(0, 240, 255, 0.08) 0%, transparent 100%);
   pointer-events: none;
 }
 

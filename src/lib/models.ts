@@ -16,6 +16,12 @@ export const AVAILABLE_MODELS: AIModel[] = [
 export const DEFAULT_MODEL = AVAILABLE_MODELS[0]
 export const DEFAULT_COMPARISON_MODEL = AVAILABLE_MODELS[4]
 
-export function currentModel(id: unknown, fallback = DEFAULT_MODEL): AIModel {
-  return AVAILABLE_MODELS.find((model) => model.id === id) ?? fallback
+export const OPTIONAL_GOOGLE_MODEL: AIModel = { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google' }
+
+export function selectableModels(googleKey: string): AIModel[] {
+  return googleKey.trim() ? [...AVAILABLE_MODELS, OPTIONAL_GOOGLE_MODEL] : AVAILABLE_MODELS
+}
+
+export function currentModel(id: unknown, fallback = DEFAULT_MODEL, googleKey = ''): AIModel {
+  return selectableModels(googleKey).find((model) => model.id === id) ?? fallback
 }

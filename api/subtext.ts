@@ -2,7 +2,7 @@
  * Vercel Edge Function — Subtext Analysis Proxy
  *
  * Proxies subtext analysis requests to Gemini/Anthropic/OpenAI.
- * Gemini uses the server-side GEMINI_API_KEY by default.
+ * Google requires an explicit user key; no server-side Gemini fallback.
  * Anthropic/OpenAI require the user to provide their own key.
  */
 
@@ -104,9 +104,9 @@ async function proxyGemini(
   maxTokens: number,
   clientKey?: string,
 ) {
-  const apiKey = clientKey || process.env.GEMINI_API_KEY
+  const apiKey = clientKey
   if (!apiKey) {
-    return new Response('No Gemini API key configured', { status: 500 })
+    return new Response('No Google API key. Add one in Settings.', { status: 400 })
   }
 
   const res = await fetch(

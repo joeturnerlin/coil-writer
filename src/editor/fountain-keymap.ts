@@ -97,7 +97,6 @@ function transformToType(cleaned: string, targetType: CycleType): string {
       return `!${cleaned}`
     case 'transition':
       return `>${cleaned}`
-    case 'dialogue':
     default:
       return cleaned
   }

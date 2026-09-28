@@ -66,7 +66,7 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
     const file = await openScriptFile()
     if (file) {
       const result = await importFile(file.name, file.data)
-      useEditorStore.getState().openFile(file.name, result.content)
+      useEditorStore.getState().openFile(file.name, result.content, file.documentId)
       if (result.warnings.length > 0) {
         useEditorStore.getState().setImportWarnings(result.warnings, result.format)
       }

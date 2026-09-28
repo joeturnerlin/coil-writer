@@ -1,10 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { annotationField } from '../editor/annotation-state'
-import {
-  createEditorExtensions,
-  subtextCompartment,
-  themeCompartment,
-} from '../editor/editor-setup'
+import { createEditorExtensions, subtextCompartment, themeCompartment } from '../editor/editor-setup'
 import { fountainDarkTheme, fountainLightTheme } from '../editor/fountain-theme'
 import { subtextExtension } from '../editor/subtext-decorations'
 import { useCodeMirror } from '../editor/use-codemirror'
@@ -21,7 +17,7 @@ interface EditorPanelProps {
 
 export function EditorPanel(_props: EditorPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const { content, fileName, setStats, setCursorLine, updateContent } = useEditorStore()
+  const { content, fileName, documentVersion, setStats, setCursorLine, updateContent } = useEditorStore()
   const { theme, zoomLevel, editorMode } = useSettingsStore()
   const analysisStatus = useAIStore((s) => s.analysisState.status)
   const isAnalyzing = analysisStatus === 'sending' || analysisStatus === 'analyzing'
@@ -30,7 +26,7 @@ export function EditorPanel(_props: EditorPanelProps) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Track previous fileName to detect when a new file is opened
-  const prevFileNameRef = useRef<string | null>(fileName)
+  const prevDocumentVersionRef = useRef(documentVersion)
 
   const onUpdate = useCallback(
     ({ doc, cursorLine, selection }: { doc: string; cursorLine: number; selection: { from: number; to: number } }) => {
@@ -125,16 +121,16 @@ export function EditorPanel(_props: EditorPanelProps) {
   // Load new content into CM6 when a different file is opened
   useEffect(() => {
     const view = viewRef.current
-    if (!view || !content) return
-    if (fileName !== prevFileNameRef.current) {
-      prevFileNameRef.current = fileName
+    if (!view || content === null) return
+    if (documentVersion !== prevDocumentVersionRef.current) {
+      prevDocumentVersionRef.current = documentVersion
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: content },
       })
       // Force scene model update on file open (onUpdate only fires on edits)
       useScriptStore.getState().forceUpdate(content)
     }
-  }, [fileName, content, viewRef])
+  }, [documentVersion, content, viewRef])
 
   // Also populate scene model on initial load (auto-recovery)
   useEffect(() => {

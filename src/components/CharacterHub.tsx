@@ -75,6 +75,13 @@ function SubtextCard({ flag, sceneFrom }: { flag: SubtextFlag; sceneFrom: number
 
   return (
     <div
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault()
+          event.currentTarget.click()
+        }
+      }}
       style={{
         padding: '8px 10px',
         margin: '0 8px 6px',
@@ -174,6 +181,13 @@ function ContinuityCard({ issue }: { issue: ContinuityIssue }) {
 
   return (
     <div
+      tabIndex={-1}
+      onKeyDown={(event) => {
+        if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault()
+          event.currentTarget.click()
+        }
+      }}
       style={{
         padding: '8px 10px',
         margin: '0 8px 6px',

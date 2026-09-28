@@ -130,7 +130,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
       }
     }
     if (ov.removedForbidden) {
-      merged.forbidden_patterns = merged.forbidden_patterns.filter((f) => !ov.removedForbidden!.includes(f.pattern))
+      merged.forbidden_patterns = merged.forbidden_patterns.filter((f) => !ov.removedForbidden?.includes(f.pattern))
     }
     if (ov.addedVocabulary) {
       const existing = merged.vocabulary.map((v) => v.pattern)

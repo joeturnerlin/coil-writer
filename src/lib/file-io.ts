@@ -1,10 +1,12 @@
+import { useEditorStore } from '../store/editor-store'
 import { ALL_EXTENSIONS } from './converters/registry'
 
 /**
  * Opens a script file via the browser's file picker.
  * Accepts all supported screenplay formats.
  */
-export async function openScriptFile(): Promise<{ name: string; data: ArrayBuffer } | null> {
+export async function openScriptFile(): Promise<{ name: string; data: ArrayBuffer; documentId?: string } | null> {
+  if (window.coil) return window.coil.open()
   return new Promise((resolve) => {
     const input = document.createElement('input')
     input.type = 'file'
@@ -33,7 +35,11 @@ export async function openScriptFile(): Promise<{ name: string; data: ArrayBuffe
 /**
  * Downloads a Blob as a file (browser download).
  */
-export function downloadFile(blob: Blob, fileName: string): void {
+export async function downloadFile(blob: Blob, fileName: string): Promise<void> {
+  if (window.coil) {
+    await window.coil.save({ name: fileName, data: await blob.arrayBuffer(), mode: 'export' })
+    return
+  }
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -47,8 +53,20 @@ export function downloadFile(blob: Blob, fileName: string): void {
 /**
  * Legacy — save as .fountain (backward compat).
  */
-export function saveFountainFile(fileName: string, content: string): void {
+export async function saveFountainFile(fileName: string, content: string, saveAs = false): Promise<void> {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
-  const name = fileName.endsWith('.fountain') ? fileName : `${fileName}.fountain`
-  downloadFile(blob, name)
+  const name = fileName.endsWith('.fountain') ? fileName : `${fileName.replace(/\.[^.]+$/, '')}.fountain`
+  if (window.coil) {
+    const document = useEditorStore.getState()
+    const saved = await window.coil.save({
+      name,
+      data: await blob.arrayBuffer(),
+      mode: saveAs ? 'saveAs' : 'save',
+      documentId: document.desktopDocumentId,
+    })
+    if (saved && useEditorStore.getState().documentVersion === document.documentVersion)
+      useEditorStore.setState({ fileName: saved.name, desktopDocumentId: saved.documentId })
+    return
+  }
+  await downloadFile(blob, name)
 }

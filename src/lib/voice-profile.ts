@@ -66,7 +66,7 @@ export function buildCompactProfile(
 ): string {
   if (!profile || profile.characters.length === 0) return ''
 
-  const combinedText = selectedText + ' ' + surroundingContext
+  const combinedText = `${selectedText} ${surroundingContext}`
   const characters = overrides
     ? profile.characters.map((c) => (overrides[c.name] ? ({ ...c, ...overrides[c.name] } as CharacterProfile) : c))
     : profile.characters

@@ -182,9 +182,10 @@ export const useAIStore = create<AIState>()(
       name: 'recoil-fountain-ai',
       merge: (persisted, current) => {
         const saved = (persisted ?? {}) as Partial<AIState>
-        const model = currentModel(saved.model)
-        const a = currentModel(saved.comparisonModelA)
-        const b = currentModel(saved.comparisonModelB, DEFAULT_COMPARISON_MODEL)
+        const googleKey = saved.apiKeys?.google ?? ''
+        const model = currentModel(saved.model, DEFAULT_MODEL, googleKey)
+        const a = currentModel(saved.comparisonModelA, DEFAULT_MODEL, googleKey)
+        const b = currentModel(saved.comparisonModelB, DEFAULT_COMPARISON_MODEL, googleKey)
         return {
           ...current,
           ...saved,

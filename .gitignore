@@ -13,3 +13,5 @@ VISUAL_UPGRADE_SPEC.md
 .codex-agent/
 verification/runs/
 release/
+dist-desktop/
+*.tsbuildinfo

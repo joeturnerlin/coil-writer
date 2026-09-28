@@ -96,8 +96,8 @@ db.version(4).stores({
  */
 export async function saveToDB(fileName: string, content: string): Promise<void> {
   const existing = await db.documents.where('fileName').equals(fileName).first()
-  if (existing) {
-    await db.documents.update(existing.id!, {
+  if (existing?.id !== undefined) {
+    await db.documents.update(existing.id, {
       content,
       lastModified: Date.now(),
     })
@@ -132,8 +132,8 @@ export async function getDocument(fileName: string): Promise<string | null> {
  */
 export async function saveVoiceProfile(sourceHash: string, profile: string): Promise<void> {
   const existing = await db.voiceProfiles.where('sourceHash').equals(sourceHash).first()
-  if (existing) {
-    await db.voiceProfiles.update(existing.id!, { profile, createdAt: Date.now() })
+  if (existing?.id !== undefined) {
+    await db.voiceProfiles.update(existing.id, { profile, createdAt: Date.now() })
   } else {
     await db.voiceProfiles.add({ sourceHash, profile, createdAt: Date.now() })
   }
@@ -168,10 +168,10 @@ export async function saveProfileOverride(
 ): Promise<void> {
   const existing = await db.profileOverrides.where('[fileName+characterName]').equals([fileName, characterName]).first()
 
-  if (existing) {
+  if (existing?.id !== undefined) {
     // Don't downgrade manual → analysis
     if (existing.source === 'manual' && source === 'analysis') return
-    await db.profileOverrides.update(existing.id!, {
+    await db.profileOverrides.update(existing.id, {
       overrides,
       source,
       updatedAt: Date.now(),

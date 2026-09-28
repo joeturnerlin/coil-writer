@@ -149,62 +149,68 @@ export function DualRewritePopup() {
         </div>
       )}
 
-      {suggestions &&
-        suggestions.slice(0, showAll ? 2 : 1).map((s, i) => (
+      {suggestions?.slice(0, showAll ? 2 : 1).map((s, i) => (
+        <div
+          tabIndex={-1}
+          onKeyDown={(event) => {
+            if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+              event.preventDefault()
+              event.currentTarget.click()
+            }
+          }}
+          key={`${s.text}:${i}`}
+          style={{
+            padding: '12px',
+            marginBottom: '6px',
+            borderRadius: 'var(--card-radius)',
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-secondary)',
+            cursor: 'pointer',
+            transition: 'border-color 0.15s ease',
+          }}
+          onClick={() => handleAccept(s.text, modelId)}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--accent-cyan)'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--border-color)'
+          }}
+        >
           <div
-            key={i}
             style={{
-              padding: '12px',
+              fontSize: '12px',
+              fontFamily: "'Courier Prime', monospace",
+              color: 'var(--text-primary)',
+              lineHeight: '1.6',
               marginBottom: '6px',
-              borderRadius: 'var(--card-radius)',
-              border: '1px solid var(--border-color)',
-              background: 'var(--bg-secondary)',
-              cursor: 'pointer',
-              transition: 'border-color 0.15s ease',
-            }}
-            onClick={() => handleAccept(s.text, modelId)}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = 'var(--accent-cyan)'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = 'var(--border-color)'
             }}
           >
-            <div
-              style={{
-                fontSize: '12px',
-                fontFamily: "'Courier Prime', monospace",
-                color: 'var(--text-primary)',
-                lineHeight: '1.6',
-                marginBottom: '6px',
-              }}
-            >
-              {s.text}
-            </div>
-            <div
-              style={{
-                fontSize: '11px',
-                color: 'var(--text-muted)',
-                fontFamily: "'Inter', sans-serif",
-                marginBottom: '4px',
-              }}
-            >
-              {s.reasoning}
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-                fontSize: '11px',
-                fontFamily: "'JetBrains Mono', monospace",
-                color: 'var(--accent-cyan)',
-              }}
-            >
-              <Check size={10} /> Accept
-            </div>
+            {s.text}
           </div>
-        ))}
+          <div
+            style={{
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              fontFamily: "'Inter', sans-serif",
+              marginBottom: '4px',
+            }}
+          >
+            {s.reasoning}
+          </div>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontSize: '11px',
+              fontFamily: "'JetBrains Mono', monospace",
+              color: 'var(--accent-cyan)',
+            }}
+          >
+            <Check size={10} /> Accept
+          </div>
+        </div>
+      ))}
     </div>
   )
 
@@ -289,7 +295,7 @@ export function DualRewritePopup() {
               lineHeight: '1.6',
             }}
           >
-            {rewriteSelection.text.length > 150 ? rewriteSelection.text.slice(0, 150) + '...' : rewriteSelection.text}
+            {rewriteSelection.text.length > 150 ? `${rewriteSelection.text.slice(0, 150)}...` : rewriteSelection.text}
           </div>
         </div>
 
@@ -323,7 +329,7 @@ export function DualRewritePopup() {
                 triggerComparison()
               }
             }}
-            autoFocus
+            ref={focusInstruction}
           />
           <button
             style={{
@@ -417,4 +423,8 @@ export function DualRewritePopup() {
       </div>
     </div>
   )
+}
+
+function focusInstruction(input: HTMLInputElement | null) {
+  input?.focus()
 }

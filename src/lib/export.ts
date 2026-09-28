@@ -26,7 +26,7 @@ export function exportAnnotationsJSON(annotations: Annotation[], fileName: strin
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = fileName.replace(/\.fountain$/i, '') + '-annotations.json'
+  a.download = `${fileName.replace(/\.fountain$/i, '')}-annotations.json`
   a.click()
   URL.revokeObjectURL(url)
 }
@@ -46,14 +46,14 @@ export function exportAnnotatedFountain(content: string, annotations: Annotation
     const marker = `/* [${ann.action.toUpperCase()}${severity}]${dims} ${ann.comment} */`
 
     // Insert marker after the annotated text
-    annotated = annotated.slice(0, ann.to) + ' ' + marker + annotated.slice(ann.to)
+    annotated = `${annotated.slice(0, ann.to)} ${marker}${annotated.slice(ann.to)}`
   }
 
   const blob = new Blob([annotated], { type: 'text/plain' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = fileName.replace(/\.fountain$/i, '') + '-annotated.fountain'
+  a.download = `${fileName.replace(/\.fountain$/i, '')}-annotated.fountain`
   a.click()
   URL.revokeObjectURL(url)
 }

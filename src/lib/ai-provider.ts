@@ -27,8 +27,8 @@ export interface RewriteResponse {
 /**
  * Request a rewrite of the selected text with surrounding context.
  *
- * In production (Vercel), all calls go through /api/rewrite which holds
- * the Gemini API key server-side. In dev, Gemini goes direct and
+ * In production, all calls go through the shared /api/rewrite handler.
+ * Desktop uses user keys only. In dev, Gemini goes direct and
  * Anthropic/OpenAI are proxied through the Vite dev server.
  */
 export async function requestRewrite(
@@ -129,7 +129,7 @@ ${instruction || 'Rewrite this to be more compelling and vivid.'}`
 
 /**
  * Production proxy — routes through /api/rewrite Vercel Edge Function.
- * Gemini uses the server-side API key. Anthropic/OpenAI pass user's key.
+ * Google always uses the user's key; web Anthropic/OpenAI also support server keys.
  */
 async function callServerProxy(
   selectedText: string,

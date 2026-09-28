@@ -5,6 +5,8 @@ import type { DocumentStats, Episode } from '../editor/types'
 import type { ConversionWarning } from '../lib/converters/types'
 
 interface EditorState {
+  documentVersion: number
+  desktopDocumentId: string | null
   fileName: string | null
   content: string | null
   stats: DocumentStats | null
@@ -14,7 +16,7 @@ interface EditorState {
   importWarnings: ConversionWarning[]
   importFormat: string | null
 
-  openFile: (name: string, content: string) => void
+  openFile: (name: string, content: string, desktopDocumentId?: string) => void
   setStats: (stats: DocumentStats) => void
   setCursorLine: (line: number) => void
   setViewRef: (ref: MutableRefObject<EditorView | null>) => void
@@ -24,6 +26,8 @@ interface EditorState {
 }
 
 export const useEditorStore = create<EditorState>((set) => ({
+  documentVersion: 0,
+  desktopDocumentId: null,
   fileName: null,
   content: null,
   stats: null,
@@ -33,12 +37,14 @@ export const useEditorStore = create<EditorState>((set) => ({
   importWarnings: [],
   importFormat: null,
 
-  openFile: (name, content) =>
-    set({
+  openFile: (name, content, desktopDocumentId) =>
+    set((state) => ({
+      documentVersion: state.documentVersion + 1,
+      desktopDocumentId: desktopDocumentId ?? null,
       fileName: name,
       content,
       cursorLine: 1,
-    }),
+    })),
 
   setStats: (stats) => set({ stats }),
   setCursorLine: (line) => set({ cursorLine: line }),

@@ -13,6 +13,7 @@ import { StashDrawer } from './components/StashDrawer'
 import { StatsBar } from './components/StatsBar'
 import { Toolbar } from './components/Toolbar'
 import { TypeIndicator } from './components/TypeIndicator'
+import { connectDesktop } from './lib/desktop'
 import { getRecoveredDocument } from './lib/persistence'
 import { useEditorStore } from './store/editor-store'
 import { useOnboardingStore } from './store/onboarding-store'
@@ -28,6 +29,8 @@ export function App() {
 
   const hasDocument = content !== null
 
+  useEffect(connectDesktop, [])
+
   // Track when tour completes to mark onboarding done
   const prevTourStep = useRef(tourStep)
   useEffect(() => {
@@ -42,7 +45,7 @@ export function App() {
   useEffect(() => {
     if (hasDocument) return
     getRecoveredDocument().then((doc) => {
-      if (doc) {
+      if (doc && useEditorStore.getState().content === null) {
         useEditorStore.getState().openFile(doc.fileName, doc.content)
       }
     })
@@ -140,6 +143,13 @@ export function App() {
       {/* Focus mode escape hint */}
       {focusMode && (
         <div
+          tabIndex={-1}
+          onKeyDown={(event) => {
+            if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+              event.preventDefault()
+              event.currentTarget.click()
+            }
+          }}
           className="fixed top-4 right-4 text-xs opacity-30 hover:opacity-70 transition-opacity cursor-pointer select-none"
           style={{ color: theme === 'dark' ? '#888' : '#666' }}
           onClick={() => setFocusMode(false)}

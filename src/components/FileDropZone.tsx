@@ -14,9 +14,9 @@ export function FileDropZone() {
   const { openFile } = useEditorStore()
 
   const handleFileData = useCallback(
-    async (fileName: string, data: ArrayBuffer) => {
+    async (fileName: string, data: ArrayBuffer, documentId?: string) => {
       const result = await importFile(fileName, data)
-      openFile(fileName, result.content)
+      openFile(fileName, result.content, documentId)
       if (result.warnings.length > 0) {
         useEditorStore.getState().setImportWarnings(result.warnings, result.format)
       }
@@ -54,7 +54,7 @@ export function FileDropZone() {
   const handleClick = async () => {
     const file = await openScriptFile()
     if (file) {
-      handleFileData(file.name, file.data)
+      handleFileData(file.name, file.data, file.documentId)
     }
   }
 
@@ -68,6 +68,13 @@ export function FileDropZone() {
   return (
     <div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px' }}>
       <div
+        tabIndex={-1}
+        onKeyDown={(event) => {
+          if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault()
+            event.currentTarget.click()
+          }
+        }}
         style={{
           width: '100%',
           maxWidth: '28rem',

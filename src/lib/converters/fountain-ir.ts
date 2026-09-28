@@ -198,5 +198,5 @@ export function irToFountain(ir: ScriptIR): string {
     prevType = el.type
   }
 
-  return lines.join('\n') + '\n'
+  return `${lines.join('\n')}\n`
 }
