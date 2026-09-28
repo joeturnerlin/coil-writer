@@ -5,29 +5,15 @@
  * In development, Anthropic/OpenAI calls are proxied through Vite dev server
  * to avoid CORS issues. Google Gemini supports CORS directly.
  *
- * In Tauri (Phase 3), all calls go through the Rust backend.
+ * Desktop production requests use the same handlers in Electron main.
  */
 
 import type { VoiceProfile } from './voice-profile'
 import { buildCompactProfile, shouldInjectProfile } from './voice-profile'
 
-export type AIProvider = 'anthropic' | 'openai' | 'google'
-
-export interface AIModel {
-  id: string
-  name: string
-  provider: AIProvider
-}
-
-export const AVAILABLE_MODELS: AIModel[] = [
-  { id: 'claude-sonnet-4-20250514', name: 'Claude Sonnet 4', provider: 'anthropic' },
-  { id: 'claude-opus-4-20250514', name: 'Claude Opus 4', provider: 'anthropic' },
-  { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', provider: 'anthropic' },
-  { id: 'gpt-4o', name: 'GPT-4o', provider: 'openai' },
-  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', provider: 'openai' },
-  { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google' },
-  { id: 'gemini-2.5-flash-preview-05-20', name: 'Gemini 2.5 Flash', provider: 'google' },
-]
+import type { AIProvider } from './models'
+export type { AIProvider, AIModel } from './models'
+export { AVAILABLE_MODELS } from './models'
 
 export interface RewriteSuggestion {
   text: string
@@ -64,11 +50,11 @@ export async function requestRewrite(
 
   if (provider === 'anthropic') {
     return callAnthropic(systemPrompt, userPrompt, model, apiKey)
-  } else if (provider === 'openai') {
-    return callOpenAI(systemPrompt, userPrompt, model, apiKey)
-  } else {
-    return callGemini(systemPrompt, userPrompt, model, apiKey)
   }
+  if (provider === 'openai') {
+    return callOpenAI(systemPrompt, userPrompt, model, apiKey)
+  }
+  return callGemini(systemPrompt, userPrompt, model, apiKey)
 }
 
 function buildSystemPrompt(profile: VoiceProfile | null, selectedText: string, context: string): string {
@@ -92,7 +78,7 @@ Respond in this exact JSON format:
   if (!compactProfile) return base
 
   // Find active characters for forbidden pattern injection
-  const combinedText = selectedText + ' ' + context
+  const combinedText = `${selectedText} ${context}`
   const activeChars = profile.characters.filter((c) => {
     const regex = new RegExp(`\\b${c.name}\\b`, 'i')
     return regex.test(combinedText)

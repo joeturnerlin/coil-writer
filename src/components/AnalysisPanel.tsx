@@ -1,6 +1,6 @@
 import { Loader2, Sparkles, X } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { analyzeScript, analyzeScriptViaProxy, buildAnalysisSummary } from '../lib/script-analysis'
+import { analyzeScriptViaProxy, buildAnalysisSummary } from '../lib/script-analysis'
 import { hashScript } from '../lib/voice-profile'
 import { useAIStore } from '../store/ai-store'
 import { useCharacterStore } from '../store/character-store'
@@ -8,7 +8,7 @@ import { useEditorStore } from '../store/editor-store'
 
 export function AnalysisPanel() {
   const { content } = useEditorStore()
-  const { analysisState, setAnalysisState, setCurrentProfile, apiKeys } = useAIStore()
+  const { analysisState, setAnalysisState, setCurrentProfile } = useAIStore()
   const [elapsed, setElapsed] = useState(0)
   const abortRef = useRef<AbortController | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -36,14 +36,7 @@ export function AnalysisPanel() {
     try {
       setAnalysisState({ status: 'analyzing', startedAt: Date.now() })
 
-      const geminiKey = apiKeys.google
-      let profile: import('../lib/voice-profile').VoiceProfile
-
-      if (geminiKey) {
-        profile = await analyzeScript(content, geminiKey, undefined, abortRef.current.signal)
-      } else {
-        profile = await analyzeScriptViaProxy(content, abortRef.current.signal)
-      }
+      const profile = await analyzeScriptViaProxy(content, abortRef.current.signal)
 
       const hash = await hashScript(content)
       setCurrentProfile(profile, hash)
@@ -63,7 +56,7 @@ export function AnalysisPanel() {
         message: err instanceof Error ? err.message : 'Analysis failed',
       })
     }
-  }, [content, apiKeys.google, setAnalysisState, setCurrentProfile])
+  }, [content, setAnalysisState, setCurrentProfile])
 
   const handleCancel = () => {
     abortRef.current?.abort()
@@ -174,7 +167,7 @@ export function AnalysisPanel() {
  */
 export function useAnalysis() {
   const { content } = useEditorStore()
-  const { apiKeys, setAnalysisState, setCurrentProfile } = useAIStore()
+  const { setAnalysisState, setCurrentProfile } = useAIStore()
 
   return useCallback(async () => {
     if (!content) return
@@ -183,14 +176,7 @@ export function useAnalysis() {
     setAnalysisState({ status: 'analyzing', startedAt: Date.now() })
 
     try {
-      const geminiKey = apiKeys.google
-      let profile: import('../lib/voice-profile').VoiceProfile
-
-      if (geminiKey) {
-        profile = await analyzeScript(content, geminiKey, undefined, abortController.signal)
-      } else {
-        profile = await analyzeScriptViaProxy(content, abortController.signal)
-      }
+      const profile = await analyzeScriptViaProxy(content, abortController.signal)
 
       const hash = await hashScript(content)
       setCurrentProfile(profile, hash)
@@ -206,5 +192,5 @@ export function useAnalysis() {
         message: err instanceof Error ? err.message : 'Analysis failed',
       })
     }
-  }, [content, apiKeys.google, setAnalysisState, setCurrentProfile])
+  }, [content, setAnalysisState, setCurrentProfile])
 }
