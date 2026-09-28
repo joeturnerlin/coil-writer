@@ -4,6 +4,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import pixelmatch from 'pixelmatch'
 import { PNG } from 'pngjs'
+import { editorContent, launchThroughServices, persistedContent } from './launch-services'
 
 const fixture = path.resolve('tests/fixtures/coil-parity.fountain')
 const executablePath = path.resolve(`release/mac-${process.arch}/Coil.app/Contents/MacOS/Coil`)
@@ -37,17 +38,30 @@ async function launch(args: string[] = [], profile?: string) {
 }
 async function quit(app: ElectronApplication) {
   const child = app.process()
-  let watchdog: ReturnType<typeof setTimeout> | undefined
+  const log = path.join(await mkdtemp(path.resolve('verification/runs/exec-quit-')), 'lifecycle.log')
+  let closing: Promise<void> | undefined
   try {
-    await Promise.race([
-      app.close(),
-      new Promise<never>((_, reject) => { watchdog = setTimeout(() => reject(new Error('Electron did not finish normal shutdown within 60 seconds')), 60000) }),
-    ])
-    await expect.poll(() => child.exitCode).toBe(0)
-  } finally {
-    clearTimeout(watchdog)
-    // Teardown only: a stuck test must fail and must not leave an orphan app.
+    await app.evaluate(({ app }, logPath) => {
+      const fs = process.getBuiltinModule('fs')
+      app.once('before-quit', () => fs.appendFileSync(logPath, 'before-quit\n'))
+      app.once('will-quit', () => fs.appendFileSync(logPath, 'will-quit\n'))
+      app.once('quit', () => fs.appendFileSync(logPath, 'quit\n'))
+    }, log)
+    closing = app.close()
+    await expect.poll(() => readFile(log, 'utf8').catch((error) => {
+      if (error.code === 'ENOENT') return ''
+      throw error
+    }), { timeout: 10000 }).toBe('before-quit\nwill-quit\nquit\n')
+    // Harness only: direct exec launches can stall after quit on this Mac
+    // (https://github.com/electron/electron/issues/52582). Lifecycle/durability
+    // acceptance uses LaunchServices below and never accepts a killed process.
     if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
+    await closing
+    console.log('DIRECT_EXEC: before-quit > will-quit > quit observed; own child cleaned up by harness.')
+  } finally {
+    // Failed assertions stay failed; clean up only this test's direct-exec child.
+    if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
+    await closing
   }
 }
 async function menu(app: ElectronApplication, id: string) {
@@ -231,4 +245,41 @@ test('File > Open recreates the editor after closing the last window', async () 
     await expect(nextPage.locator('.cm-content')).toContainText('Every frame remembers')
     console.log('NATIVE: File > Open recreates the closed window and loads the script.')
   } finally { await quit(app) }
+})
+
+test('LaunchServices preserves normal autosaves and window bounds across five quit/relaunch cycles', async () => {
+  const profile = await mkdtemp(path.resolve('verification/runs/durability-'))
+  let running: Awaited<ReturnType<typeof launchThroughServices>> | undefined
+  try {
+    running = await launchThroughServices(profile, fixture)
+    await expect(running.page.locator('.cm-content')).toContainText('Every frame remembers')
+    const markers: string[] = []
+    for (let cycle = 1; cycle <= 5; cycle++) {
+      const marker = `Durability marker ${path.basename(profile)} cycle ${cycle}.`
+      markers.push(marker)
+      await running.page.locator('.cm-content').click()
+      await running.page.keyboard.press('Meta+End')
+      await running.page.keyboard.type(`\n${marker}\n`)
+      const expected = await editorContent(running.page)
+      for (const previous of markers) expect(expected).toContain(previous)
+      // Observe the normal two-second Dexie autosave; never write the DB from tests.
+      await expect.poll(() => persistedContent(running!.page), { timeout: 10000 }).toBe(expected)
+      const bounds = { x: 60 + cycle * 10, y: 80 + cycle * 10, width: 1050 + cycle * 10, height: 730 + cycle * 10 }
+      await running.evaluate(`require('electron').BrowserWindow.getAllWindows()[0].setBounds(${JSON.stringify(bounds)})`)
+      await expect.poll(() => running!.evaluate("require('electron').BrowserWindow.getAllWindows()[0].getBounds()")).toEqual(bounds)
+      const quitting = running
+      running = undefined
+      await quitting.quit()
+      expect(JSON.parse(await readFile(path.join(profile, 'window.json'), 'utf8'))).toMatchObject(bounds)
+      running = await launchThroughServices(profile)
+      await expect(running.page.locator('.cm-content')).toBeVisible()
+      await running.page.locator('.cm-content').click()
+      await running.page.keyboard.press('Meta+End')
+      await expect(running.page.locator('.cm-content')).toContainText(marker)
+      expect(await editorContent(running.page)).toBe(expected)
+      expect(await persistedContent(running.page)).toBe(expected)
+      expect(await running.evaluate("require('electron').BrowserWindow.getAllWindows()[0].getBounds()")).toEqual(bounds)
+      console.log(`DURABILITY ${cycle}/5: complete autosaved document and bounds restored after LaunchServices quit/relaunch; marker=${marker}`)
+    }
+  } finally { if (running) await running.quit() }
 })
