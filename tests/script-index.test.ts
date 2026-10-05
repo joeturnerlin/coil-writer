@@ -269,3 +269,31 @@ describe('ScriptIndex: 120-page scale', () => {
     checkSlices(ix, src)
   })
 })
+
+it('time of day is found before a trailing qualifier', async () => {
+  const { buildScriptIndex } = await import('../src/lib/script-index')
+  const ix = buildScriptIndex('EXT. THE GROVE - NIGHT - HALLUCINATION\n\nAction.\n\nEXT. MOUNTAIN VISTA - LATE AFTERNOON - TRANSITION\n\nMore.\n')
+  expect(ix.scenes.map((s) => [s.location, s.timeOfDay])).toEqual([
+    ['THE GROVE', 'NIGHT'],
+    ['MOUNTAIN VISTA', 'AFTERNOON'],
+  ])
+})
+
+it('a place containing a time word is not read as the time (DAY ROOM)', async () => {
+  const { buildScriptIndex } = await import('../src/lib/script-index')
+  const ix = buildScriptIndex('INT. HOSPITAL - DAY ROOM - FLASHBACK\n\nAction.\n')
+  expect(ix.scenes[0].timeOfDay).toBe('UNKNOWN')
+  expect(ix.scenes[0].location).toBe('HOSPITAL - DAY ROOM - FLASHBACK')
+})
+
+it('real time phrases before a qualifier are still read', async () => {
+  const { buildScriptIndex } = await import('../src/lib/script-index')
+  const ix = buildScriptIndex(
+    'INT. OFFICE - SAME TIME - FLASHBACK\n\nA.\n\nINT. OFFICE - A FEW HOURS LATER - FLASHBACK\n\nB.\n\nINT. OFFICE - 2 HOURS LATER - DREAM\n\nC.\n',
+  )
+  expect(ix.scenes.map((x) => [x.location, x.timeOfDay])).toEqual([
+    ['OFFICE', 'SAME'],
+    ['OFFICE', 'LATER'],
+    ['OFFICE', 'LATER'],
+  ])
+})

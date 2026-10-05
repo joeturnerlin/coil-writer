@@ -9,7 +9,8 @@ import { verifyFindings } from './proofread-verify'
 import { type ScriptIndex, buildScriptIndex, textAtLines } from './script-index'
 
 /** ~6k tokens of script per chunk at ~4 chars/token. */
-export const CHUNK_TARGET_CHARS = 24_000
+// ~9k chars keeps one chunk's request well under the hosted 60 s limit (24k chunks took >27 s on The Hike)
+export const CHUNK_TARGET_CHARS = 9_000
 export const PROOFREAD_CONCURRENCY = 2
 export const PROOFREAD_MAX_TOKENS = 4096
 
@@ -119,10 +120,13 @@ export function estimateRun(source: string): CostEstimate {
   const index = buildScriptIndex(source)
   const chunks = chunkScript(index, source)
   const per = estimateTokens(SYSTEM_PROMPT.length + factsBlock(index).length)
+  // Calibrated on a real run (The Hike, 43 pages, 2026-10-05): actual input was ~1.9x the character-count
+  // estimate (line numbers + tokenizer) and output averaged ~1,700 tokens per chunk. The old 300/chunk guess
+  // showed $0.15 for a run that cost $0.44.
   return {
     chunks: chunks.length,
-    inputTokens: chunks.reduce((n, c) => n + per + estimateTokens(c.text.length), 0),
-    outputTokens: chunks.length * 300,
+    inputTokens: Math.round(1.9 * chunks.reduce((n, c) => n + per + estimateTokens(c.text.length), 0)),
+    outputTokens: chunks.length * 1700,
   }
 }
 

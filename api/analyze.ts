@@ -9,10 +9,10 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { DEFAULT_MODEL } from '../src/lib/models'
-import { parseAnthropicUsage } from '../src/lib/usage'
-import { extractAnthropicText, requestAnthropic } from './anthropic'
-import { applyTesterToken } from './tester'
+import { DEFAULT_MODEL } from '../src/lib/models.js'
+import { parseAnthropicUsage } from '../src/lib/usage.js'
+import { extractAnthropicText, requestAnthropic } from './anthropic.js'
+import { applyTesterToken } from './tester.js'
 
 export const config = {
   maxDuration: 60,

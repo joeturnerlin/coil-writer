@@ -9,7 +9,7 @@ import { handleAnalysis } from '../api/analyze'
 import subtext from '../api/subtext'
 import structure from '../api/structure'
 import continuity from '../api/continuity'
-import proofread from '../api/proofread'
+import { handleProofread as proofread } from '../api/proofread'
 import { routeApi } from './tester-proxy'
 import { FORMAT_DESCRIPTORS } from '../src/lib/converters/registry'
 

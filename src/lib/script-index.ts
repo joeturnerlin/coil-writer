@@ -141,6 +141,62 @@ const TIME_WORDS: Record<string, TimeOfDay> = {
   SAME: 'SAME',
 }
 
+const TIME_MODIFIERS = new Set([
+  'LATE',
+  'EARLY',
+  'MID',
+  'NEXT',
+  'THE',
+  'OF',
+  'THAT',
+  'SAME',
+  'MOMENTS',
+  'MOMENT',
+  'A',
+  'AN',
+  'FEW',
+  'SEVERAL',
+  'TIME',
+  'SECONDS',
+  'MINUTE',
+  'MINUTES',
+  'HOUR',
+  'HOURS',
+  'DAYS',
+  'WEEK',
+  'WEEKS',
+  'MONTH',
+  'MONTHS',
+  'YEAR',
+  'YEARS',
+  'ONE',
+  'TWO',
+  'THREE',
+  'FOUR',
+  'FIVE',
+  'SIX',
+  'SEVEN',
+  'EIGHT',
+  'NINE',
+  'TEN',
+  'TWELVE',
+  'HALF',
+  'AN',
+  'BEFORE',
+  'AFTER',
+])
+
+/** True only when the whole segment is a time phrase ("LATE AFTERNOON"), not a place that contains a time word ("DAY ROOM"). */
+function isTimeExpression(token: string): boolean {
+  const words = token
+    .toUpperCase()
+    .split(/[\s/,()]+/)
+    .filter(Boolean)
+  return (
+    words.some((w) => TIME_WORDS[w]) && words.every((w) => TIME_WORDS[w] || TIME_MODIFIERS.has(w) || /^\d+$/.test(w))
+  )
+}
+
 function parseTime(token: string): TimeOfDay {
   for (const w of token.toUpperCase().split(/[\s/,()]+/)) {
     const t = TIME_WORDS[w]
@@ -171,16 +227,22 @@ function parseHeading(raw: string) {
   let location = s
   let timeRaw: string | null = null
   let timeOfDay: TimeOfDay = 'UNKNOWN'
-  let last: RegExpExecArray | null = null
+  // The time can sit before a qualifier ("NIGHT - HALLUCINATION", "DUSK - TRANSITION"): take the right-most
+  // segment that reads as a time; everything before it is the location.
+  const seps: RegExpExecArray[] = []
   TIME_SEP_RE.lastIndex = 0
-  for (let r = TIME_SEP_RE.exec(s); r; r = TIME_SEP_RE.exec(s)) last = r
-  if (last) {
-    const token = s.slice(last.index + last[0].length).trim()
-    const t = parseTime(token)
+  for (let r = TIME_SEP_RE.exec(s); r; r = TIME_SEP_RE.exec(s)) seps.push(r)
+  for (let i = seps.length - 1; i >= 0; i--) {
+    const start = seps[i].index + seps[i][0].length
+    const end = i + 1 < seps.length ? seps[i + 1].index : s.length
+    const token = s.slice(start, end).trim()
+    // The last segment keeps the old lenient read; an interior segment must be a time phrase on its own.
+    const t = i === seps.length - 1 || isTimeExpression(token) ? parseTime(token) : 'UNKNOWN'
     if (t !== 'UNKNOWN') {
-      location = s.slice(0, last.index).trim()
+      location = s.slice(0, seps[i].index).trim()
       timeRaw = token
       timeOfDay = t
+      break
     }
   }
   return { sceneNumber, intExt, location, timeOfDay, timeRaw }

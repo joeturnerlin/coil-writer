@@ -29,7 +29,7 @@ export function OfflineBanner() {
       style={{
         display: 'block',
         padding: '6px 16px',
-        fontSize: '18px',
+        fontSize: '12px',
         background: 'var(--bg-secondary)',
         borderBottom: '1px solid var(--border-color)',
         color: 'var(--structure-gap, #ef5350)',

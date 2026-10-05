@@ -1,4 +1,4 @@
-import { parseAnthropicUsage } from '../src/lib/usage'
+import { parseAnthropicUsage } from '../src/lib/usage.js'
 
 /** Shared Messages transport for both Vercel handlers and the desktop bundle. */
 export function requestAnthropic(
