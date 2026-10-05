@@ -204,3 +204,33 @@ describe('3. reopening a file finds its history', () => {
     expect(useEditorStore.getState().documentId).not.toBe('rec')
   })
 })
+
+describe('unload emergency copy', () => {
+  beforeEach(() => {
+    const store = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    })
+  })
+  test('an edit stashed at unload (newer than the last IndexedDB save) is recovered and persisted', async () => {
+    const { saveToDB, getRecoveredDocument, stashUnsaved, db } = await import('../src/lib/persistence')
+    await db.documents.clear()
+    await saveToDB('doc-a', 'a.fountain', 'OLD TEXT')
+    await new Promise((r) => setTimeout(r, 5))
+    stashUnsaved({ documentId: 'doc-a', fileName: 'a.fountain', doc: 'OLD TEXT plus the last keystrokes' })
+    const recovered = await getRecoveredDocument()
+    expect(recovered?.content).toBe('OLD TEXT plus the last keystrokes')
+    expect((await db.documents.where('documentId').equals('doc-a').first())?.content).toBe('OLD TEXT plus the last keystrokes')
+    expect(localStorage.getItem('coil-unsaved-edit')).toBeNull()
+  })
+
+  test('a stale stash older than the saved copy is ignored', async () => {
+    const { saveToDB, getRecoveredDocument, db } = await import('../src/lib/persistence')
+    await db.documents.clear()
+    localStorage.setItem('coil-unsaved-edit', JSON.stringify({ documentId: 'doc-b', fileName: 'b.fountain', doc: 'STALE', at: 1 }))
+    await saveToDB('doc-b', 'b.fountain', 'NEWER')
+    expect((await getRecoveredDocument())?.content).toBe('NEWER')
+  })
+})

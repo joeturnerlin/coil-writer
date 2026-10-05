@@ -278,9 +278,43 @@ export async function getRecoveredDocument(): Promise<{
   content: string
 } | null> {
   const doc = await db.documents.orderBy('lastModified').last()
+  // An emergency copy written synchronously at unload (reload/quit inside the autosave window) wins if newer.
+  const unsaved = takeUnsaved()
+  if (unsaved && (!doc || unsaved.at > doc.lastModified)) {
+    await saveToDB(unsaved.documentId, unsaved.fileName, unsaved.doc)
+    recoveredHint = { documentId: unsaved.documentId, fileName: unsaved.fileName, content: unsaved.doc }
+    return { documentId: unsaved.documentId, fileName: unsaved.fileName, content: unsaved.doc }
+  }
   if (!doc) return null
   recoveredHint = { documentId: doc.documentId, fileName: doc.fileName, content: doc.content }
   return { documentId: doc.documentId, fileName: doc.fileName, content: doc.content }
+}
+
+const UNSAVED_KEY = 'coil-unsaved-edit'
+interface UnsavedEdit {
+  documentId: string
+  fileName: string
+  doc: string
+  at: number
+}
+
+/** Synchronous (localStorage) copy of an edit IndexedDB could not commit before the page unloaded. */
+export function stashUnsaved(edit: Omit<UnsavedEdit, 'at'>): void {
+  try {
+    localStorage.setItem(UNSAVED_KEY, JSON.stringify({ ...edit, at: Date.now() }))
+  } catch {
+    // Storage full or unavailable: the IndexedDB write still runs.
+  }
+}
+
+function takeUnsaved(): UnsavedEdit | null {
+  try {
+    const raw = localStorage.getItem(UNSAVED_KEY)
+    localStorage.removeItem(UNSAVED_KEY)
+    return raw ? (JSON.parse(raw) as UnsavedEdit) : null
+  } catch {
+    return null
+  }
 }
 
 /**

@@ -5,7 +5,7 @@ import { fountainDarkTheme, fountainLightTheme } from '../editor/fountain-theme'
 import { buildRewriteSelection } from '../editor/rewrite-selection'
 import { subtextExtension } from '../editor/subtext-decorations'
 import { useCodeMirror } from '../editor/use-codemirror'
-import { AUTOSAVE_INTERVAL_MS, saveToDB } from '../lib/persistence'
+import { AUTOSAVE_INTERVAL_MS, saveToDB, stashUnsaved } from '../lib/persistence'
 import { installVersionHistory } from '../lib/version-history'
 import { useAIStore } from '../store/ai-store'
 import { useAnnotationStore } from '../store/annotation-store'
@@ -177,9 +177,14 @@ export function EditorPanel(_props: EditorPanelProps) {
 
   // Flush a pending autosave when the editor unmounts or the page closes
   useEffect(() => {
-    window.addEventListener('beforeunload', flushSave)
+    // Unload can't wait for IndexedDB: keep a synchronous copy of any pending edit, then start the normal save.
+    const onUnload = () => {
+      if (pendingSaveRef.current) stashUnsaved(pendingSaveRef.current)
+      flushSave()
+    }
+    window.addEventListener('beforeunload', onUnload)
     return () => {
-      window.removeEventListener('beforeunload', flushSave)
+      window.removeEventListener('beforeunload', onUnload)
       flushSave()
     }
   }, [flushSave])

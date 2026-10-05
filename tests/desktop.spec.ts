@@ -144,11 +144,11 @@ test('packaged app matches web pixels and executes native Open, Rewrite and Anal
     await expect(page.getByText('Voice: 1 character, 1 forbidden patterns')).toBeVisible()
     await page.screenshot({ path: `${parity}/analysis.png`, scale: 'css' })
 
-    // Real editor selection/mouseup path opens the existing rewrite popup.
+    // Real editor selection + Cmd-release gesture opens the existing rewrite popup (plain selection no longer does).
     await page.locator('.cm-content').click()
     await page.keyboard.press('Meta+Home')
     await page.keyboard.press('Meta+A')
-    await page.locator('.cm-content').dispatchEvent('mouseup')
+    await page.locator('.cm-content').dispatchEvent('mouseup', { metaKey: true })
     await expect(page.getByText('Every frame keeps a secret we left behind.', { exact: true })).toBeVisible()
     await page.screenshot({ path: `${parity}/rewrite.png`, scale: 'css' })
     const calls = await app.evaluate(() => (globalThis as unknown as { providerCalls: unknown[] }).providerCalls)
@@ -254,7 +254,8 @@ test('desktop refuses remote content, opens external links in the browser and mi
       const response = await fetch('/api/rewrite', { method: 'POST', body: JSON.stringify({ provider: 'anthropic', model: 'claude-fable-5-1', selectedText: 'Every frame remembers something.' }) })
       return { status: response.status, remaining: response.headers.get('X-Usage-Remaining') }
     })
-    expect(rateLimit).toEqual({ status: 500, remaining: '999' })
+    // Keyless callers never reach a server key (desktop has none; hosted requires a tester token)
+    expect(rateLimit).toEqual({ status: 401, remaining: null })
 
     await page.evaluate(() => localStorage.setItem('recoil-fountain-ai', JSON.stringify({ version: 0, state: {
       provider: 'google', model: 'gemini-2.5-pro', comparisonProviderA: 'google', comparisonModelA: 'gemini-2.5-pro', comparisonProviderB: 'anthropic', comparisonModelB: 'claude-sonnet-4-20250514',
