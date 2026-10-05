@@ -3,7 +3,8 @@ import { useAIActivityStore } from '../store/ai-activity-store'
 
 /** Per-call usage, plus a running total that survives restarts until reset (priced models only for dollars). */
 export function UsageReadout() {
-  const { lastCall, totalInput, totalOutput, totalCostUSD, totalSince, resetTotal } = useAIActivityStore()
+  const { lastCall, totalInput, totalOutput, totalCostUSD, totalUnpricedCalls, totalSince, resetTotal } =
+    useAIActivityStore()
   if (!lastCall && totalInput + totalOutput === 0) return null
 
   const call = lastCall
@@ -12,7 +13,14 @@ export function UsageReadout() {
       }`
     : null
   const since = new Date(totalSince).toLocaleDateString([], { month: 'short', day: 'numeric' })
-  const total = `≈${formatUSD(totalCostUSD)} (in ${formatTokens(totalInput)} · out ${formatTokens(totalOutput)})`
+  const tokens = `in ${formatTokens(totalInput)} · out ${formatTokens(totalOutput)}`
+  // Models without a verified price add tokens but no dollars: never show $0.00 for them, flag mixed totals.
+  const total =
+    totalCostUSD > 0
+      ? `≈${formatUSD(totalCostUSD)}${totalUnpricedCalls > 0 ? ' + unpriced calls' : ''} (${tokens})`
+      : totalUnpricedCalls > 0
+        ? `${tokens} (no verified price for these models)`
+        : `≈${formatUSD(0)} (${tokens})`
 
   return (
     <span

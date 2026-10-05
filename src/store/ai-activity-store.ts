@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
 import { estimateCostUSD } from '../lib/models'
 import type { TokenUsage } from '../lib/usage'
 
@@ -23,6 +23,8 @@ interface AIActivityState {
   totalInput: number
   totalOutput: number
   totalCostUSD: number
+  /** Calls in the running total whose model has no verified price (dollars incomplete). */
+  totalUnpricedCalls: number
   totalSince: number
   recordUsage: (model: string, usage: TokenUsage | undefined) => void
   setNetworkError: (failed: boolean) => void
@@ -42,6 +44,7 @@ export const useAIActivityStore = create<AIActivityState>()(
       totalInput: 0,
       totalOutput: 0,
       totalCostUSD: 0,
+      totalUnpricedCalls: 0,
       totalSince: Date.now(),
       recordUsage: (model, usage) => {
         if (!usage) return
@@ -55,17 +58,44 @@ export const useAIActivityStore = create<AIActivityState>()(
           totalInput: s.totalInput + usage.inputTokens,
           totalOutput: s.totalOutput + usage.outputTokens,
           totalCostUSD: s.totalCostUSD + (costUSD ?? 0),
+          totalUnpricedCalls: s.totalUnpricedCalls + (costUSD === null ? 1 : 0),
         }))
       },
       setNetworkError: (networkError) => set({ networkError }),
-      resetTotal: () => set({ totalInput: 0, totalOutput: 0, totalCostUSD: 0, totalSince: Date.now() }),
+      resetTotal: () =>
+        set({ totalInput: 0, totalOutput: 0, totalCostUSD: 0, totalUnpricedCalls: 0, totalSince: Date.now() }),
     }),
     {
       name: 'coil-ai-spend',
+      // Accounting must never break an AI call: a failed write (storage full) is ignored.
+      storage: createJSONStorage(() => ({
+        getItem: (k: string) => {
+          try {
+            return localStorage.getItem(k)
+          } catch {
+            return null
+          }
+        },
+        setItem: (k: string, v: string) => {
+          try {
+            localStorage.setItem(k, v)
+          } catch {
+            // storage full or unavailable
+          }
+        },
+        removeItem: (k: string) => {
+          try {
+            localStorage.removeItem(k)
+          } catch {
+            // ignore
+          }
+        },
+      })),
       partialize: (s) => ({
         totalInput: s.totalInput,
         totalOutput: s.totalOutput,
         totalCostUSD: s.totalCostUSD,
+        totalUnpricedCalls: s.totalUnpricedCalls,
         totalSince: s.totalSince,
       }),
     },

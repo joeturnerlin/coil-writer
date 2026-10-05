@@ -29,3 +29,18 @@ test('running spend total accumulates across calls and resets', () => {
   expect(useAIActivityStore.getState().totalCostUSD).toBe(0)
   expect(useAIActivityStore.getState().totalInput).toBe(0)
 })
+
+test('a failing spend write never breaks an AI call', () => {
+  vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => { throw new Error('QuotaExceededError') }, removeItem: () => {} })
+  expect(() => useAIActivityStore.getState().recordUsage('claude-sonnet-5', { inputTokens: 10, outputTokens: 10 })).not.toThrow()
+  expect(() => useAIActivityStore.getState().setNetworkError(false)).not.toThrow()
+})
+
+test('unpriced models count tokens but never pretend to cost $0', () => {
+  const s = useAIActivityStore.getState()
+  s.resetTotal()
+  s.recordUsage('gpt-6-astra', { inputTokens: 100, outputTokens: 100 })
+  const t = useAIActivityStore.getState()
+  expect(t.totalCostUSD).toBe(0)
+  expect(t.totalUnpricedCalls).toBe(1)
+})
