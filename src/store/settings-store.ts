@@ -178,6 +178,11 @@ export const useSettingsStore = create<SettingsState>()(
       onRehydrateStorage: () => {
         return (state?: SettingsState) => {
           if (state) {
+            // An unreadable unsaved draft must not come back on launch: restore the theme it was based on.
+            const d = state.customDraft
+            if (state.preset === 'draft' && (!d || contrastRatio(d.text, d.bg) < CONTRAST_BLOCK)) {
+              state.preset = state.draftBase
+            }
             applyPreset(resolveTheme(state.preset, state.customDraft, state.customSlots))
           }
         }

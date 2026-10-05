@@ -175,3 +175,36 @@ describe('settings store: slots + migration', () => {
     expect(seen).toEqual(['custom2', 'recoil', 'muted', 'light', 'custom2'])
   })
 })
+
+describe('rehydrate guard (Astra)', () => {
+  it('an unreadable unsaved draft is not restored on launch', async () => {
+    const data: Record<string, string> = {
+      'coil-settings-v3': JSON.stringify({
+        version: 3,
+        state: {
+          preset: 'draft',
+          draftBase: 'muted',
+          customDraft: { bg: '#0a0a0f', text: '#0a0a0f', accent: '#00f0ff' },
+        },
+      }),
+    }
+    const ls = {
+      getItem: (k: string) => data[k] ?? null,
+      setItem: (k: string, v: string) => {
+        data[k] = v
+      },
+      removeItem: (k: string) => {
+        delete data[k]
+      },
+    }
+    vi.stubGlobal('localStorage', ls)
+    vi.stubGlobal('window', { localStorage: ls })
+    vi.stubGlobal('document', {
+      documentElement: { style: { setProperty: () => {} } },
+      body: { className: '', style: {} },
+    })
+    vi.resetModules()
+    const { useSettingsStore } = await import('../src/store/settings-store')
+    expect(useSettingsStore.getState().preset).toBe('muted')
+  })
+})

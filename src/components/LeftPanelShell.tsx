@@ -55,7 +55,9 @@ export function LeftPanelShell() {
         onPointerDown={(e) => {
           e.preventDefault()
           e.currentTarget.setPointerCapture(e.pointerId)
-          drag.current = { startX: e.clientX, startWidth: leftPanelWidth }
+          // Start from the width on screen (the viewport clamp may show less than the stored width)
+          const shown = e.currentTarget.parentElement?.getBoundingClientRect().width ?? leftPanelWidth
+          drag.current = { startX: e.clientX, startWidth: Math.round(shown) }
           setDragging(true)
         }}
         onPointerMove={(e) => {
