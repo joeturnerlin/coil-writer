@@ -115,7 +115,7 @@ export function EpisodeNavigator() {
   return (
     <div
       style={{
-        width: '180px',
+        width: '100%',
         display: 'flex',
         flexDirection: 'column',
         flexShrink: 0,

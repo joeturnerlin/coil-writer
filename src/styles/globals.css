@@ -474,3 +474,13 @@ body .cm-panels .coil-find .coil-find-close {
   font-size: 11px;
   min-width: 7ch;
 }
+
+/* Left sidebar collapse/expand */
+.left-panel-shell {
+  transition: width 0.2s ease, visibility 0.2s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .left-panel-shell {
+    transition: none;
+  }
+}

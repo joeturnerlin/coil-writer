@@ -28,7 +28,7 @@ import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
 import { useSettingsStore } from '../store/settings-store'
 import { useStashStore } from '../store/stash-store'
-import { PRESET_LIST } from '../themes/presets'
+import { themeName } from '../themes/custom-colors'
 import { CheatSheetButton } from './CheatSheet'
 import { VersionHistoryButton } from './VersionHistoryPanel'
 
@@ -42,6 +42,7 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
   const { fileName, content } = useEditorStore()
   const {
     preset,
+    customSlots,
     toggleTheme,
     zoomLevel,
     zoomIn,
@@ -122,7 +123,7 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
   }
 
   const hasAnnotations = annotations.length > 0
-  const presetName = PRESET_LIST.find((p) => p.id === preset)?.name ?? 'Dark'
+  const presetName = themeName(preset, customSlots)
 
   const sep = <div className="w-px h-5 mx-2" style={{ background: 'var(--border-color)' }} />
 
@@ -377,7 +378,7 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
         }}
         onClick={toggleTheme}
         type="button"
-        title="Cycle theme: Dark → Muted → Light"
+        title="Cycle theme: Dark → Muted → Light → Custom 1 → Custom 2"
       >
         <Palette size={13} />
         {presetName}

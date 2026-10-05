@@ -25,12 +25,19 @@ export function StatsBar() {
         fontWeight: 500,
       }}
     >
-      <div className="flex items-center gap-4">
-        {fileName && <span>{fileName}</span>}
-        <SaveStatus />
-        <UsageReadout />
+      <div
+        className="flex items-center gap-4"
+        style={{ minWidth: 0, flex: '1 1 auto', overflow: 'hidden', whiteSpace: 'nowrap' }}
+      >
+        {fileName && <span style={{ flexShrink: 0 }}>{fileName}</span>}
+        <span style={{ flexShrink: 0 }}>
+          <SaveStatus />
+        </span>
+        <span style={{ minWidth: 0, display: 'flex' }}>
+          <UsageReadout />
+        </span>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4" style={{ flexShrink: 0, whiteSpace: 'nowrap', marginLeft: '16px' }}>
         {cursorLine > 0 && <span>Line {cursorLine}</span>}
         {stats && (
           <span>

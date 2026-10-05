@@ -26,14 +26,25 @@ export function UsageReadout() {
     <span
       data-testid="usage-readout"
       title="Estimated from list prices. Requests that failed before a reply (for example a timeout) are not counted."
-      style={{ fontSize: 'inherit', fontFamily: 'inherit', display: 'inline-flex', gap: '6px', alignItems: 'center' }}
+      style={{
+        fontSize: 'inherit',
+        fontFamily: 'inherit',
+        display: 'inline-flex',
+        gap: '6px',
+        alignItems: 'center',
+        minWidth: 0,
+      }}
     >
-      {call && <>Last AI call: {call} |</>} AI spend since {since}: {total}
+      {/* The text truncates; the reset button never gets clipped away */}
+      <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {call && <>Last AI call: {call} |</>} AI spend since {since}: {total}
+      </span>
       <button
         type="button"
         onClick={resetTotal}
         title="Reset the running AI spend total"
         style={{
+          flexShrink: 0,
           background: 'none',
           border: '1px solid var(--border-color)',
           borderRadius: '3px',
