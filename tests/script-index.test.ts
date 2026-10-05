@@ -278,3 +278,10 @@ it('time of day is found before a trailing qualifier', async () => {
     ['MOUNTAIN VISTA', 'AFTERNOON'],
   ])
 })
+
+it('a place containing a time word is not read as the time (DAY ROOM)', async () => {
+  const { buildScriptIndex } = await import('../src/lib/script-index')
+  const ix = buildScriptIndex('INT. HOSPITAL - DAY ROOM - FLASHBACK\n\nAction.\n')
+  expect(ix.scenes[0].timeOfDay).toBe('UNKNOWN')
+  expect(ix.scenes[0].location).toBe('HOSPITAL - DAY ROOM - FLASHBACK')
+})

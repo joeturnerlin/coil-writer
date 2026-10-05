@@ -141,6 +141,31 @@ const TIME_WORDS: Record<string, TimeOfDay> = {
   SAME: 'SAME',
 }
 
+const TIME_MODIFIERS = new Set([
+  'LATE',
+  'EARLY',
+  'MID',
+  'NEXT',
+  'THE',
+  'OF',
+  'THAT',
+  'SAME',
+  'MOMENTS',
+  'A',
+  'FEW',
+  'DAYS',
+  'YEARS',
+])
+
+/** True only when the whole segment is a time phrase ("LATE AFTERNOON"), not a place that contains a time word ("DAY ROOM"). */
+function isTimeExpression(token: string): boolean {
+  const words = token
+    .toUpperCase()
+    .split(/[\s/,()]+/)
+    .filter(Boolean)
+  return words.some((w) => TIME_WORDS[w]) && words.every((w) => TIME_WORDS[w] || TIME_MODIFIERS.has(w))
+}
+
 function parseTime(token: string): TimeOfDay {
   for (const w of token.toUpperCase().split(/[\s/,()]+/)) {
     const t = TIME_WORDS[w]
@@ -180,7 +205,8 @@ function parseHeading(raw: string) {
     const start = seps[i].index + seps[i][0].length
     const end = i + 1 < seps.length ? seps[i + 1].index : s.length
     const token = s.slice(start, end).trim()
-    const t = parseTime(token)
+    // The last segment keeps the old lenient read; an interior segment must be a time phrase on its own.
+    const t = i === seps.length - 1 || isTimeExpression(token) ? parseTime(token) : 'UNKNOWN'
     if (t !== 'UNKNOWN') {
       location = s.slice(0, seps[i].index).trim()
       timeRaw = token
