@@ -9,6 +9,7 @@ import { handleAnalysis } from '../api/analyze'
 import subtext from '../api/subtext'
 import structure from '../api/structure'
 import continuity from '../api/continuity'
+import { routeApi } from './tester-proxy'
 import { FORMAT_DESCRIPTORS } from '../src/lib/converters/registry'
 
 const ownsInstance = app.requestSingleInstanceLock()
@@ -131,7 +132,7 @@ if (ownsInstance) void app.whenReady().then(async () => {
     if (url.host !== 'app') return new Response('Forbidden', { status: 403 })
     if (url.pathname.startsWith('/api/')) {
       const handler = handlers[url.pathname]
-      return handler ? handler(req) : new Response('Not found', { status: 404 })
+      return handler ? routeApi(req, handler) : new Response('Not found', { status: 404 })
     }
     if (req.method !== 'GET') return new Response('Method not allowed', { status: 405 })
     let file: string

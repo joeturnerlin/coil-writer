@@ -7,6 +7,7 @@
  */
 
 import { proxyAnthropic } from './anthropic'
+import { applyTesterToken } from './tester'
 import { checkRateLimit, RateLimitError } from './rate-limit'
 
 export const config = { runtime: 'edge' }
@@ -46,6 +47,8 @@ export default async function handler(req: Request) {
   }
 
   const hasApiKey = Boolean(body.apiKey)
+  const denied = applyTesterToken(body)
+  if (denied) return denied
 
   const { selectedText, surroundingContext, instruction, provider, model, systemPromptOverride } = body
 

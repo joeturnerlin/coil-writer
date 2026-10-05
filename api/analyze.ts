@@ -11,6 +11,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { DEFAULT_MODEL } from '../src/lib/models'
 import { requestAnthropic } from './anthropic'
+import { applyTesterToken } from './tester'
 
 export const config = {
   maxDuration: 60,
@@ -51,6 +52,8 @@ export async function handleAnalysis(req: Request): Promise<Response> {
   if (!scriptContent || typeof scriptContent !== 'string') {
     return Response.json({ error: 'Missing scriptContent field' }, { status: 400 })
   }
+  const denied = applyTesterToken(body)
+  if (denied) return denied
   const apiKey = body.apiKey || process.env.ANTHROPIC_API_KEY
   if (!apiKey) return Response.json({ error: 'No Anthropic API key. Add one in Settings.' }, { status: 400 })
 
