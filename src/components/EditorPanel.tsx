@@ -40,10 +40,16 @@ export function EditorPanel(_props: EditorPanelProps) {
     const pending = pendingSaveRef.current
     pendingSaveRef.current = null
     if (pending === null) return
-    const { setSaveStatus } = useEditorStore.getState()
+    const { setSaveStatus, documentId, fileKey } = useEditorStore.getState()
     setSaveStatus('saving')
     // 'saved' only after the Dexie transaction commits; a failure is surfaced and retried.
-    saveToDB(pending.documentId, pending.fileName, pending.doc).then(
+    // fileKey is read now (not at edit time) so a Save As in between is not overwritten with the old key.
+    saveToDB(
+      pending.documentId,
+      pending.fileName,
+      pending.doc,
+      documentId === pending.documentId ? fileKey : null,
+    ).then(
       () => {
         if (pendingSaveRef.current === null) setSaveStatus('saved')
       },

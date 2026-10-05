@@ -407,11 +407,10 @@ body.light .cm-page-break-line {
 
 /* ── Find & Replace panel (src/editor/find-panel.ts) — theme via CSS vars, so dark/muted/light all follow ── */
 body .cm-panels .coil-find {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 8px 48px 8px 12px;
+  padding: 8px 12px;
   background: var(--bg-secondary);
   color: var(--text-primary);
   border-bottom: 1px solid var(--border-color);
@@ -466,9 +465,7 @@ body .cm-panels .coil-find button[aria-pressed="true"] {
 }
 
 body .cm-panels .coil-find .coil-find-close {
-  position: absolute;
-  top: 8px;
-  right: 8px;
+  margin-left: auto;
   padding: 3px 8px;
 }
 

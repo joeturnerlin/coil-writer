@@ -18,6 +18,8 @@ interface DocumentRecord {
   fileName: string
   content: string
   lastModified: number
+  /** Desktop only: sha256 of the file's real path (computed in the main process), so a reopened file finds its document. */
+  fileKey?: string
 }
 
 interface VoiceProfileRecord {
@@ -114,8 +116,8 @@ db.version(4).stores({
 })
 
 /**
- * v5 migration helper: one new documentId per distinct fileName, so every legacy
- * row (documents, overrides, annotations, deltas) lands on the same id as its document.
+ * v5 migration helper: one new documentId per distinct fileName (used for legacy rows that have no
+ * document row of their own).
  */
 export function buildDocumentIdMap(fileNames: string[], makeId: () => string = newDocumentId): Map<string, string> {
   const map = new Map<string, string>()
@@ -134,22 +136,57 @@ db.version(5)
     versions: '++id, documentId, createdAt',
   })
   .upgrade(async (tx) => {
+    // Legacy saves were not transactional, so two document rows can share a fileName. Every row gets its OWN
+    // id (documentId is unique); rows keyed only by fileName follow the NEWEST document with that name.
+    const docs: DocumentRecord[] = await tx.table('documents').toArray()
+    docs.sort((a, b) => a.lastModified - b.lastModified || (a.id ?? 0) - (b.id ?? 0))
+    const rowIds = new Map<number, string>()
+    const newest = new Map<string, string>()
+    for (const d of docs) {
+      const documentId = newDocumentId()
+      rowIds.set(d.id as number, documentId)
+      newest.set(d.fileName, documentId)
+    }
+    await tx
+      .table('documents')
+      .toCollection()
+      .modify((row) => {
+        row.documentId = rowIds.get(row.id)
+      })
     const related = ['profileOverrides', 'annotations', 'pendingDeltas'] as const
-    const names: string[] = (await tx.table('documents').toArray()).map((d) => d.fileName)
-    for (const t of related) names.push(...(await tx.table(t).toArray()).map((r) => r.fileName))
-    const ids = buildDocumentIdMap(names)
-    for (const t of ['documents', ...related]) {
+    const orphans: string[] = []
+    for (const t of related) {
+      for (const r of await tx.table(t).toArray()) if (!newest.has(r.fileName)) orphans.push(r.fileName)
+    }
+    for (const [name, id] of buildDocumentIdMap(orphans)) newest.set(name, id)
+    for (const t of related) {
       await tx
         .table(t)
         .toCollection()
         .modify((row) => {
-          row.documentId = ids.get(row.fileName)
+          row.documentId = newest.get(row.fileName)
         })
     }
   })
 
+// v6: a stable fileKey (desktop) lets a reopened file find the document whose history it already has.
+db.version(6).stores({
+  documents: '++id, &documentId, fileName, lastModified, fileKey',
+  voiceProfiles: '++id, sourceHash, createdAt',
+  profileOverrides: '++id, fileName, documentId, [fileName+characterName], [documentId+characterName], updatedAt',
+  annotations: '++id, fileName, documentId, annotationId, createdAt',
+  pendingDeltas: '++id, fileName, documentId, characterName, createdAt',
+  usage: '++id, [feature+period], updatedAt',
+  versions: '++id, documentId, createdAt',
+})
+
 // A recovered document's id, so callers that still call openFile(name, content) keep the same identity.
 let recoveredHint: { documentId: string; fileName: string; content: string } | null = null
+
+/** Forget the recovered hint: an explicit id was used, so a later open of the same text must not adopt it. */
+export function clearRecoveredHint(): void {
+  recoveredHint = null
+}
 
 /** Returns the documentId for a just-recovered document (once), else null. */
 export function claimRecoveredId(fileName: string, content: string): string | null {
@@ -172,7 +209,12 @@ function nextSaveStamp(): number {
   return lastSaveStamp
 }
 
-export async function saveToDB(documentId: string, fileName: string, content: string): Promise<void> {
+export async function saveToDB(
+  documentId: string,
+  fileName: string,
+  content: string,
+  fileKey?: string | null,
+): Promise<void> {
   // One rw transaction so concurrent saves can't both see "no row" and each add one.
   await db.transaction('rw', db.documents, async () => {
     const lastModified = nextSaveStamp()
@@ -182,6 +224,7 @@ export async function saveToDB(documentId: string, fileName: string, content: st
         fileName,
         content,
         lastModified,
+        ...(fileKey ? { fileKey } : {}),
       })
     } else {
       await db.documents.add({
@@ -189,9 +232,41 @@ export async function saveToDB(documentId: string, fileName: string, content: st
         fileName,
         content,
         lastModified,
+        ...(fileKey ? { fileKey } : {}),
       })
     }
   })
+}
+
+/** Point a stored document at a file (Save As). No row yet → nothing to update; the next autosave carries the key. */
+export async function setDocumentFileKey(documentId: string, fileKey: string): Promise<void> {
+  await db.transaction('rw', db.documents, async () => {
+    // One file belongs to one document: whoever held this path before (Save As onto it) lets go.
+    await db.documents
+      .where('fileKey')
+      .equals(fileKey)
+      .filter((d) => d.documentId !== documentId)
+      .modify({ fileKey: undefined })
+    await db.documents.where('documentId').equals(documentId).modify({ fileKey })
+  })
+}
+
+/** The stored document for a desktop file key (newest if several), or null. */
+export async function findDocumentByFileKey(fileKey: string): Promise<{ documentId: string; content: string } | null> {
+  const rows = await db.documents.where('fileKey').equals(fileKey).toArray()
+  rows.sort((a, b) => b.lastModified - a.lastModified)
+  return rows[0] ? { documentId: rows[0].documentId, content: rows[0].content } : null
+}
+
+/** Web has no paths: a stored document is "the same file" only if its name AND text are identical (newest wins). */
+export async function findDocumentByNameAndContent(fileName: string, content: string): Promise<string | null> {
+  const rows = await db.documents
+    .where('fileName')
+    .equals(fileName)
+    .filter((d) => d.content === content)
+    .toArray()
+  rows.sort((a, b) => b.lastModified - a.lastModified)
+  return rows[0]?.documentId ?? null
 }
 
 /**

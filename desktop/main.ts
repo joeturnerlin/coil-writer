@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron'
 import type { IpcMainEvent, IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
-import { randomUUID } from 'node:crypto'
-import { readFile, writeFile } from 'node:fs/promises'
+import { createHash, randomUUID } from 'node:crypto'
+import { readFile, realpath, writeFile } from 'node:fs/promises'
 import { basename, extname, join, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import rewrite from '../api/rewrite'
@@ -47,12 +47,16 @@ function isTrusted(event: IpcMainEvent | IpcMainInvokeEvent) {
 function trusted(event: IpcMainInvokeEvent) {
   if (!isTrusted(event)) throw new Error('Untrusted document request')
 }
+// Stable identity of a file across launches: a hash of its real path. The path itself never reaches the renderer.
+async function fileKeyOf(filePath: string) {
+  return createHash('sha256').update(await realpath(filePath)).digest('hex')
+}
 async function readDocument(filePath: string) {
   if (!filters[0].extensions.includes(extname(filePath).slice(1).toLowerCase())) throw new Error('Unsupported screenplay format')
   const buffer = await readFile(filePath)
   const documentId = randomUUID()
   documents.set(documentId, filePath)
-  return { documentId, name: basename(filePath), data: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) }
+  return { documentId, fileKey: await fileKeyOf(filePath), name: basename(filePath), data: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) }
 }
 function openFiles(files: string[]) {
   pendingFiles.push(...files)
@@ -179,7 +183,7 @@ if (ownsInstance) void app.whenReady().then(async () => {
     const documentId = input.mode === 'save' && input.documentId ? input.documentId : randomUUID()
     if (input.mode === 'saveAs' && input.documentId) documents.delete(input.documentId)
     if (input.mode !== 'export') documents.set(documentId, target)
-    return { name: basename(target), documentId }
+    return { name: basename(target), documentId, ...(input.mode !== 'export' ? { fileKey: await fileKeyOf(target) } : {}) }
   })
   ipcMain.on('coil:ready', (event) => { if (!isTrusted(event)) return; ready = true; openFiles([]); flushCommands() })
   const command = (action: string) => {

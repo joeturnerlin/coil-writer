@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { runProofreadInApp } from '../lib/proofread'
+import {
+  NO_KEY_MESSAGE,
+  friendlyProofreadError,
+  hasProofreadKey,
+  runProofreadInApp,
+  runTier0Only,
+} from '../lib/proofread'
 import type { ProofreadResult } from '../lib/proofread-core'
 import { useEditorStore } from './editor-store'
 
@@ -36,6 +42,11 @@ export const useProofreadStore = create<ProofreadState>()(
         if (get().status === 'running') return
         const { content, documentId } = useEditorStore.getState()
         if (!content?.trim()) return
+        // No usable key: the AI tier would only fail. Show the rule checks and say plainly why the rest is missing.
+        if (!hasProofreadKey()) {
+          set({ status: 'done', error: NO_KEY_MESSAGE, result: runTier0Only(content), resultDocId: documentId })
+          return
+        }
         controller = new AbortController()
         const mine = controller
         set({ status: 'running', error: null, progress: { done: 0, total: 0 } })
@@ -44,13 +55,28 @@ export const useProofreadStore = create<ProofreadState>()(
             set({ progress: { done, total } }),
           )
           if (result.chunks > 0 && result.failedChunks === result.chunks) {
-            set({ status: 'error', error: result.firstError ?? 'Proofread failed.', result: null })
+            // Keep the rule-check findings; the AI failure is a separate notice under them.
+            set({
+              status: 'error',
+              error: friendlyProofreadError(result.firstError ?? 'Proofread failed.', result.firstErrorStatus),
+              result,
+              resultDocId: documentId,
+            })
           } else {
             set({ status: 'done', result, resultDocId: documentId })
           }
         } catch (err) {
           if (mine.signal.aborted) set({ status: 'idle' })
-          else set({ status: 'error', error: err instanceof Error ? err.message : 'Proofread failed.' })
+          else {
+            const status = (err as { status?: unknown } | null)?.status
+            set({
+              status: 'error',
+              error: friendlyProofreadError(
+                err instanceof Error ? err.message : 'Proofread failed.',
+                typeof status === 'number' ? status : null,
+              ),
+            })
+          }
         }
       },
       cancel: () => controller?.abort(),

@@ -1,11 +1,17 @@
 import { useEditorStore } from '../store/editor-store'
 import { ALL_EXTENSIONS } from './converters/registry'
+import { setDocumentFileKey } from './persistence'
 
 /**
  * Opens a script file via the browser's file picker.
  * Accepts all supported screenplay formats.
  */
-export async function openScriptFile(): Promise<{ name: string; data: ArrayBuffer; documentId?: string } | null> {
+export async function openScriptFile(): Promise<{
+  name: string
+  data: ArrayBuffer
+  documentId?: string
+  fileKey?: string
+} | null> {
   if (window.coil) return window.coil.open()
   return new Promise((resolve) => {
     const input = document.createElement('input')
@@ -64,8 +70,15 @@ export async function saveFountainFile(fileName: string, content: string, saveAs
       mode: saveAs ? 'saveAs' : 'save',
       documentId: document.desktopDocumentId,
     })
-    if (saved && useEditorStore.getState().documentVersion === document.documentVersion)
-      useEditorStore.setState({ fileName: saved.name, desktopDocumentId: saved.documentId })
+    if (saved && useEditorStore.getState().documentVersion === document.documentVersion) {
+      useEditorStore.setState({
+        fileName: saved.name,
+        desktopDocumentId: saved.documentId,
+        ...(saved.fileKey ? { fileKey: saved.fileKey } : {}),
+      })
+      // Save As: this document now lives at the new path, so its stored key follows it.
+      if (saved.fileKey && document.documentId) await setDocumentFileKey(document.documentId, saved.fileKey)
+    }
     return
   }
   await downloadFile(blob, name)

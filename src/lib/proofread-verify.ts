@@ -41,6 +41,9 @@ export function rosterKeys(index: ScriptIndex): Set<string> {
 }
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/** Whole-word occurrences of `quote` in `text` (the same lookaround applyTarget uses for Apply). */
+const wholeWordRe = (quote: string, letters = '\\p{L}') =>
+  new RegExp(`(?<![${letters}])${escapeRe(quote)}(?![${letters}])`, 'gu')
 const TOKEN_RE = /^[\p{L}][\p{L}'’-]*$/u
 
 function countWord(source: string, token: string): number {
@@ -108,17 +111,32 @@ export function verifyFindings(
       continue
     }
 
-    // Quote must sit in the cited line or the line either side (models are often off by one).
+    // Each quote must sit on the cited line, or (models are often off by one) uniquely on the line either side
+    // inside this chunk. The ACTUAL line is what we store, so jump, Apply and staleness all use the real one.
+    // spelling / wrong-name need a whole-word match; the free-text categories need real words, not fragments.
+    const exact = category === 'spelling' || category === 'wrong-name'
+    const letters = exact ? '\\p{L}' : '\\p{L}\\p{N}'
     const verified: VerifiedEvidence[] = []
     let quotesOk = true
     for (const e of evidence) {
       const q = normWS(e.quote)
-      const near = [e.line - 1, e.line, e.line + 1].filter((n) => n >= 1 && n <= total)
-      if (!near.some((n) => normWS(lineText(n)).includes(q))) {
+      if (!exact && (q.replace(/\s/g, '').length < 4 || !/[\p{L}\p{N}]/u.test(q))) {
         quotesOk = false
         break
       }
-      verified.push({ line: e.line, quote: q, lineText: lineText(e.line) })
+      const has = (n: number) => wholeWordRe(q, letters).test(normWS(lineText(n)))
+      let actual: number | null = has(e.line) ? e.line : null
+      if (actual === null) {
+        const hits = [e.line - 1, e.line + 1].filter(
+          (n) => n >= ctx.range[0] && n <= ctx.range[1] && n >= 1 && n <= total && has(n),
+        )
+        if (hits.length === 1) actual = hits[0]
+      }
+      if (actual === null) {
+        quotesOk = false
+        break
+      }
+      verified.push({ line: actual, quote: q, lineText: lineText(actual) })
     }
     if (!quotesOk) {
       drop('quote-not-found')
@@ -147,7 +165,10 @@ export function verifyFindings(
       continue
     }
 
-    const dedupe = `${category}|${[...new Set(verified.map((e) => e.line))].sort((a, b) => a - b).join(',')}`
+    const dedupe = `${category}|${verified
+      .map((e) => `${e.line}:${e.quote}`)
+      .sort()
+      .join('|')}`
     if (seen.has(dedupe)) {
       drop('duplicate')
       continue

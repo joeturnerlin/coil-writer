@@ -3,7 +3,7 @@ import type { MutableRefObject } from 'react'
 import { create } from 'zustand'
 import type { DocumentStats, Episode } from '../editor/types'
 import type { ConversionWarning } from '../lib/converters/types'
-import { claimRecoveredId, newDocumentId } from '../lib/persistence'
+import { claimRecoveredId, clearRecoveredHint, newDocumentId } from '../lib/persistence'
 
 export type SaveStatus = 'saved' | 'saving' | 'failed'
 
@@ -12,6 +12,8 @@ interface EditorState {
   desktopDocumentId: string | null
   /** Stable identity (uuid) of the open document; the key for documents, versions, revisions. */
   documentId: string | null
+  /** Desktop only: hash of the open file's real path (never the path itself); stored with the document. */
+  fileKey: string | null
   /** Autosave acknowledgement for the UI: 'saved' only after the Dexie transaction committed. */
   saveStatus: SaveStatus
   lastSavedAt: number | null
@@ -26,7 +28,7 @@ interface EditorState {
   importFormat: string | null
 
   /** documentId: pass the recovered/known id to keep identity; omitted = a new document. */
-  openFile: (name: string, content: string, desktopDocumentId?: string, documentId?: string) => void
+  openFile: (name: string, content: string, desktopDocumentId?: string, documentId?: string, fileKey?: string) => void
   setSaveStatus: (status: SaveStatus, error?: string | null) => void
   setStats: (stats: DocumentStats) => void
   setCursorLine: (line: number) => void
@@ -40,6 +42,7 @@ export const useEditorStore = create<EditorState>((set) => ({
   documentVersion: 0,
   desktopDocumentId: null,
   documentId: null,
+  fileKey: null,
   saveStatus: 'saved',
   lastSavedAt: null,
   saveError: null,
@@ -52,11 +55,14 @@ export const useEditorStore = create<EditorState>((set) => ({
   importWarnings: [],
   importFormat: null,
 
-  openFile: (name, content, desktopDocumentId, documentId) =>
+  openFile: (name, content, desktopDocumentId, documentId, fileKey) => {
+    // An explicit id means the caller resolved identity; the recovered hint must not be claimed by a later open of the same text.
+    if (documentId) clearRecoveredHint()
     set((state) => ({
       documentVersion: state.documentVersion + 1,
       desktopDocumentId: desktopDocumentId ?? null,
       documentId: documentId ?? claimRecoveredId(name, content) ?? newDocumentId(),
+      fileKey: fileKey ?? null,
       saveStatus: 'saved',
       saveError: null,
       fileName: name,
@@ -64,7 +70,8 @@ export const useEditorStore = create<EditorState>((set) => ({
       cursorLine: 1,
       importWarnings: [],
       importFormat: null,
-    })),
+    }))
+  },
 
   setSaveStatus: (status, error = null) =>
     set((state) => ({

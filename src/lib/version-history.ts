@@ -158,20 +158,31 @@ export async function snapshotBeforeAI(reason: string): Promise<VersionRecord | 
  * (one undoable editor change), and records the restore as a NEW version. Nothing is deleted.
  */
 export async function restoreVersion(versionId: number): Promise<VersionRecord | null> {
-  const store = useEditorStore.getState()
-  const { documentId, fileName } = store
+  const { documentId } = useEditorStore.getState()
+  const view = useEditorStore.getState().viewRef?.current
   const version = await db.versions.get(versionId)
+  // After every await: still the same document (and editor view)? Otherwise the user moved on; touch nothing.
+  const sameDocument = () => {
+    const s = useEditorStore.getState()
+    return s.documentId === documentId && s.viewRef?.current === view
+  }
+  if (!version || !documentId || version.documentId !== documentId || !sameDocument()) return null
   const current = currentText()
-  if (!version || !documentId || version.documentId !== documentId || current === null) return null
+  if (current === null) return null
 
   await addVersion(documentId, current, 'pre-restore', 'Before restore')
+  if (!sameDocument()) return null
 
-  const view = store.viewRef?.current
   if (view) {
     // onUpdate then syncs the store, stats and autosave.
     view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: version.content } })
-  } else if (fileName) {
-    store.openFile(fileName, version.content, store.desktopDocumentId ?? undefined, documentId)
+  } else {
+    const { fileName, desktopDocumentId, fileKey } = useEditorStore.getState()
+    if (fileName) {
+      useEditorStore
+        .getState()
+        .openFile(fileName, version.content, desktopDocumentId ?? undefined, documentId, fileKey ?? undefined)
+    }
   }
   const label = `Restored from ${new Date(version.createdAt).toLocaleString()}`
   return addVersion(documentId, version.content, 'restore', label)

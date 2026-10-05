@@ -145,9 +145,11 @@ export function createFindPanel(view: EditorView): Panel {
     button('Replace', 'Replace this match (Enter)', () => replaceNext(view)),
     button('Replace all', 'Replace every match', () => replaceAll(view)),
   )
+  // Close sits in the (shorter) replace row, in the flow, so it can never cover the option toggles above.
   const close = button('Close', 'Close (Esc)', () => closeSearchPanel(view))
   close.classList.add('coil-find-close')
-  dom.append(findRow, replaceRow, close)
+  replaceRow.append(close)
+  dom.append(findRow, replaceRow)
 
   refresh()
 

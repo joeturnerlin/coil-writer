@@ -5,12 +5,12 @@ import { EditorView } from '@codemirror/view'
  */
 import { Loader2, SpellCheck, X } from 'lucide-react'
 import { useDeferredValue, useMemo, useState } from 'react'
-import { estimateProofreadCost } from '../lib/proofread'
+import { NO_KEY_MESSAGE, estimateProofreadCost } from '../lib/proofread'
+import { applyFix, editorView as view } from '../lib/proofread-apply'
 import type { ProofreadCategory, ProofreadFinding } from '../lib/proofread-types'
 import { totalDropped } from '../lib/proofread-types'
 import { applyTarget, isStale } from '../lib/proofread-verify'
 import { formatTokens, formatUSD } from '../lib/usage'
-import { snapshotBeforeAI } from '../lib/version-history'
 import { useEditorStore } from '../store/editor-store'
 import { useProofreadStore } from '../store/proofread-store'
 import { useSettingsStore } from '../store/settings-store'
@@ -39,10 +39,6 @@ const btn = (primary = false, disabled = false): React.CSSProperties => ({
   color: primary ? 'var(--accent-cyan)' : 'var(--text-primary)',
 })
 
-function view(): EditorView | null {
-  return useEditorStore.getState().viewRef?.current ?? null
-}
-
 function jump(line: number, quote: string) {
   const v = view()
   if (!v || line < 1 || line > v.state.doc.lines) return
@@ -55,27 +51,6 @@ function jump(line: number, quote: string) {
     effects: EditorView.scrollIntoView(from, { y: 'center', yMargin: 50 }),
   })
   v.focus()
-}
-
-async function applyFix(f: ProofreadFinding): Promise<string | null> {
-  const v = view()
-  if (!v) return 'Editor not ready.'
-  const target = applyTarget(f, v.state.doc.toString().split('\n'))
-  if (!target) return 'That line changed; re-check.'
-  try {
-    await snapshotBeforeAI('Proofread fix')
-  } catch {
-    return 'Could not save a version snapshot, so nothing was changed.'
-  }
-  // Re-resolve after the await: the document may have moved while the snapshot was written.
-  const again = applyTarget(f, v.state.doc.toString().split('\n'))
-  if (!again) return 'That line changed; re-check.'
-  const from = v.state.doc.line(again.line).from + again.start
-  v.dispatch({
-    changes: { from, to: from + (again.end - again.start), insert: again.replacement },
-    selection: { anchor: from, head: from + again.replacement.length },
-  })
-  return null
 }
 
 export function ProofreadPanel() {
@@ -179,15 +154,7 @@ export function ProofreadPanel() {
           gap: '12px',
         }}
       >
-        {error && !running && (
-          <div role="alert" style={{ color: 'var(--structure-gap, #ef5350)' }}>
-            The check failed: {error}
-            <button type="button" style={{ ...btn(), display: 'block', marginTop: '8px' }} onClick={() => void run()}>
-              Retry
-            </button>
-          </div>
-        )}
-        {mine && mine.failedChunks > 0 && (
+        {mine && mine.failedChunks > 0 && mine.failedChunks < mine.chunks && (
           <div role="alert" style={{ color: 'var(--structure-gap, #ef5350)' }}>
             Incomplete: {mine.failedChunks} of {mine.chunks} chunks failed
             {mine.firstError ? ` (${mine.firstError})` : ''}. Findings below cover only the chunks that worked.
@@ -200,7 +167,9 @@ export function ProofreadPanel() {
         )}
 
         {mine && real.length === 0 && shown.length === 0 && mine.failedChunks === 0 && (
-          <div>No problems found in {mine.scenes} scenes.</div>
+          <div>
+            {error ? 'No rule-check problems found' : 'No problems found'} in {mine.scenes} scenes.
+          </div>
         )}
 
         {mine &&
@@ -273,6 +242,16 @@ export function ProofreadPanel() {
               </section>
             )
           })}
+        {error && !running && (
+          <div role="alert" style={{ color: 'var(--structure-gap, #ef5350)' }}>
+            {error}
+            {error !== NO_KEY_MESSAGE && (
+              <button type="button" style={{ ...btn(), display: 'block', marginTop: '8px' }} onClick={() => void run()}>
+                Retry
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {mine && (

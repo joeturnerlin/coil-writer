@@ -139,6 +139,8 @@ export interface ProofreadResult {
   /** Chunks whose response was an error or not valid findings JSON (NOT the same as "no issues"). */
   failedChunks: number
   firstError: string | null
+  /** HTTP status of the first failed chunk's error, when it had one (0 = network). */
+  firstErrorStatus: number | null
   findings: ProofreadFinding[]
   dropped: DropCounts
   usage: { inputTokens: number; outputTokens: number }
@@ -160,6 +162,7 @@ export async function runProofread(opts: {
   const usage = { inputTokens: 0, outputTokens: 0 }
   let failed = 0
   let firstError: string | null = null
+  let firstErrorStatus: number | null = null
   let done = 0
   let next = 0
   onProgress?.(0, chunks.length)
@@ -186,7 +189,11 @@ export async function runProofread(opts: {
       } catch (err) {
         if (signal?.aborted) return
         failed++
-        firstError ??= err instanceof Error ? err.message : String(err)
+        if (firstError === null) {
+          firstError = err instanceof Error ? err.message : String(err)
+          const status = (err as { status?: unknown } | null)?.status
+          firstErrorStatus = typeof status === 'number' ? status : null
+        }
       }
       onProgress?.(++done, chunks.length)
     }
@@ -201,8 +208,26 @@ export async function runProofread(opts: {
     chunks: chunks.length,
     failedChunks: failed,
     firstError,
+    firstErrorStatus,
     findings,
     dropped,
     usage,
+  }
+}
+
+/** Rule checks (Tier 0) only: the result when the AI tier is skipped. No chunks were sent, so none failed. */
+export function runTier0Only(source: string): ProofreadResult {
+  const index = buildScriptIndex(source)
+  const findings = runTier0(index, source).sort((a, b) => a.evidence[0].line - b.evidence[0].line)
+  return {
+    revisionHash: index.revisionHash,
+    scenes: index.scenes.length,
+    chunks: 0,
+    failedChunks: 0,
+    firstError: null,
+    firstErrorStatus: null,
+    findings,
+    dropped: emptyDropCounts(),
+    usage: { inputTokens: 0, outputTokens: 0 },
   }
 }
