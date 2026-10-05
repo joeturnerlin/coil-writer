@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type { AIProvider } from '../lib/ai-provider'
 import { OPTIONAL_GOOGLE_MODEL, selectableModels } from '../lib/models'
 import { useAIStore } from '../store/ai-store'
+import { AppearanceSettings } from './AppearanceSettings'
 
 interface SettingsDialogProps {
   open: boolean
@@ -90,7 +91,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           border: '1px solid var(--border-light)',
           borderRadius: '8px',
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)',
-          overflow: 'hidden',
+          overflow: 'auto',
+          maxHeight: 'calc(100vh - 32px)',
         }}
       >
         {/* Header */}
@@ -132,6 +134,10 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
           >
             <X size={16} />
           </button>
+        </div>
+
+        <div style={{ padding: '20px 20px 0' }}>
+          <AppearanceSettings />
         </div>
 
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>

@@ -371,7 +371,7 @@ export function getPreset(id: PresetId): ThemePreset {
  * Apply a preset to the document. Sets CSS variables on :root,
  * updates body class (dark/light), and sets body bg/color.
  */
-export function applyPreset(preset: ThemePreset) {
+export function applyPreset(preset: Pick<ThemePreset, 'isDark' | 'vars'>) {
   const root = document.documentElement
 
   // Set all CSS variables

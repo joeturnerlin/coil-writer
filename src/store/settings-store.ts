@@ -1,11 +1,26 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { ActiveOverlay, AnalyzeLeftTab, EditorMode, StructureFramework } from '../editor/types'
+import type { CustomColors, CustomSlotId, CustomSlots, ThemeId } from '../themes/custom-colors'
+import {
+  CONTRAST_BLOCK,
+  EMPTY_SLOTS,
+  SLOT_NAMES,
+  activeColors,
+  contrastRatio,
+  nextThemeId,
+  resolveTheme,
+} from '../themes/custom-colors'
 import type { PresetId } from '../themes/presets'
 import { applyPreset, getPreset } from '../themes/presets'
 
 interface SettingsState {
-  preset: PresetId
+  preset: ThemeId
+  /** Unsaved custom colors being edited live (preset === 'draft'). */
+  customDraft: CustomColors | null
+  /** Built-in preset "Reset" returns to. */
+  draftBase: PresetId
+  customSlots: CustomSlots
   theme: 'dark' | 'light'
   fontSize: number
   zoomLevel: number
@@ -21,7 +36,11 @@ interface SettingsState {
   activeLeftTab: AnalyzeLeftTab
   onboardingComplete: boolean
 
-  setPreset: (preset: PresetId) => void
+  setPreset: (preset: ThemeId) => void
+  setCustomColor: (key: keyof CustomColors, hex: string) => void
+  /** Saves the live colors to a slot. Returns false (and saves nothing) below the 3:1 contrast floor. */
+  saveCustomSlot: (slot: CustomSlotId) => boolean
+  resetCustom: () => void
   toggleTheme: () => void
   setFontSize: (size: number) => void
   zoomIn: () => void
@@ -43,14 +62,17 @@ export const LEFT_PANEL_MIN = 160
 export const LEFT_PANEL_MAX = 480
 export const LEFT_PANEL_DEFAULT = 180
 
-const CYCLE_ORDER: PresetId[] = ['recoil', 'muted', 'light']
+const PRESET_IDS: PresetId[] = ['recoil', 'muted', 'light']
 
 applyPreset(getPreset('recoil'))
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
-      preset: 'recoil',
+      preset: 'recoil' as ThemeId,
+      customDraft: null,
+      draftBase: 'recoil' as PresetId,
+      customSlots: EMPTY_SLOTS,
       theme: 'dark',
       fontSize: 16,
       zoomLevel: 120,
@@ -65,18 +87,46 @@ export const useSettingsStore = create<SettingsState>()(
       activeLeftTab: 'structure' as AnalyzeLeftTab,
       onboardingComplete: false,
 
-      setPreset: (preset) => {
-        const p = getPreset(preset)
-        applyPreset(p)
-        set({ preset, theme: p.isDark ? 'dark' : 'light' })
-      },
+      setPreset: (preset) =>
+        set((s) => {
+          const p = resolveTheme(preset, s.customDraft, s.customSlots)
+          applyPreset(p)
+          return { preset, theme: p.isDark ? 'dark' : 'light' }
+        }),
       toggleTheme: () =>
         set((s) => {
-          const idx = CYCLE_ORDER.indexOf(s.preset)
-          const next = CYCLE_ORDER[(idx + 1) % CYCLE_ORDER.length]
-          const p = getPreset(next)
+          const next = nextThemeId(s.preset, s.customSlots)
+          const p = resolveTheme(next, s.customDraft, s.customSlots)
           applyPreset(p)
           return { preset: next, theme: p.isDark ? 'dark' : 'light' }
+        }),
+      setCustomColor: (key, hex) =>
+        set((s) => {
+          const draft = { ...activeColors(s.preset, s.customDraft, s.customSlots), [key]: hex }
+          const p = resolveTheme('draft', draft, s.customSlots)
+          applyPreset(p)
+          return {
+            preset: 'draft',
+            customDraft: draft,
+            draftBase: PRESET_IDS.includes(s.preset as PresetId) ? (s.preset as PresetId) : s.draftBase,
+            theme: p.isDark ? 'dark' : 'light',
+          }
+        }),
+      saveCustomSlot: (slot) => {
+        const s = useSettingsStore.getState()
+        const c = activeColors(s.preset, s.customDraft, s.customSlots)
+        if (contrastRatio(c.text, c.bg) < CONTRAST_BLOCK) return false
+        const customSlots = { ...s.customSlots, [slot]: { ...c, name: SLOT_NAMES[slot] } }
+        const p = resolveTheme(slot, c, customSlots)
+        applyPreset(p)
+        set({ customSlots, customDraft: null, preset: slot, theme: p.isDark ? 'dark' : 'light' })
+        return true
+      },
+      resetCustom: () =>
+        set((s) => {
+          const p = getPreset(s.draftBase)
+          applyPreset(p)
+          return { preset: s.draftBase, customDraft: null, theme: p.isDark ? 'dark' : 'light' }
         }),
       setFontSize: (fontSize) => set({ fontSize: Math.max(10, Math.min(24, fontSize)) }),
       zoomIn: () => set((s) => ({ zoomLevel: Math.min(200, s.zoomLevel + 10) })),
@@ -100,7 +150,7 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'coil-settings-v3',
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         const state = persisted as Record<string, unknown>
         if (version === 0) {
@@ -119,13 +169,16 @@ export const useSettingsStore = create<SettingsState>()(
             onboardingComplete: false,
           }
         }
+        if (version === 2) {
+          // v3 adds custom colors; every existing field (incl. leftPanelWidth) is kept as-is.
+          return { ...state, customDraft: null, draftBase: 'recoil', customSlots: EMPTY_SLOTS }
+        }
         return persisted as SettingsState
       },
       onRehydrateStorage: () => {
         return (state?: SettingsState) => {
           if (state) {
-            const p = getPreset(state.preset)
-            applyPreset(p)
+            applyPreset(resolveTheme(state.preset, state.customDraft, state.customSlots))
           }
         }
       },
