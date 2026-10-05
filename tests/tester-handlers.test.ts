@@ -8,9 +8,9 @@ import { routeApi } from '../desktop/tester-proxy'
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs() })
 
 const post = (path: string, body: object) => new Request(`https://coil.local${path}`, { method: 'POST', body: JSON.stringify(body) })
-const prompts = { systemPrompt: 's', userPrompt: 'u', model: 'm' }
+const prompts = { systemPrompt: 's', userPrompt: 'u', model: 'claude-fable-5-1' }
 const cases: [string, (req: Request) => Promise<Response>, (apiKey: string, provider?: string) => object][] = [
-  ['rewrite', rewrite, (apiKey, provider = 'anthropic') => ({ selectedText: 'x', surroundingContext: '', instruction: '', provider, model: 'm', apiKey })],
+  ['rewrite', rewrite, (apiKey, provider = 'anthropic') => ({ selectedText: 'x', surroundingContext: '', instruction: '', provider, model: 'claude-fable-5-1', apiKey })],
   ['subtext', subtext, (apiKey, provider = 'anthropic') => ({ ...prompts, provider, apiKey })],
   ['structure', structure, (apiKey, provider = 'anthropic') => ({ ...prompts, provider, apiKey })],
   ['continuity', continuity, (apiKey, provider = 'anthropic') => ({ ...prompts, provider, apiKey })],
@@ -67,4 +67,12 @@ test('routeApi falls through to the local handler on an invalid JSON body', asyn
   const req = new Request('https://coil.local/api/rewrite', { method: 'POST', body: '{not json' })
   expect(await (await routeApi(req, local)).json()).toEqual({ text: 'local' })
   expect(local).toHaveBeenCalledOnce()
+})
+
+test('a tester token cannot select a model outside the supported list', async () => {
+  vi.stubEnv('COIL_TESTER_TOKENS', 'coil_a')
+  vi.stubEnv('ANTHROPIC_API_KEY', 'server-key')
+  vi.stubGlobal('fetch', async () => { throw new Error('provider must not be called') })
+  const res = await structure(new Request('https://coil.local/api/structure', { method: 'POST', body: JSON.stringify({ provider: 'anthropic', model: 'claude-any-unlisted-model', systemPrompt: 's', userPrompt: 'u', apiKey: 'coil_a' }) }))
+  expect(res.status).toBe(400)
 })

@@ -45,38 +45,9 @@ export function EditorPanel(_props: EditorPanelProps) {
     }
   }, [])
 
-  const onUpdate = useCallback(
-    ({
-      doc,
-      annotationsChanged,
-      cursorLine,
-    }: { doc: string | null; annotationsChanged: boolean; cursorLine: number }) => {
-      setCursorLine(cursorLine)
-
-      // Sync annotations from CM6 to Zustand (for React sidebar)
-      const syncAnnotations = () => {
-        const storeView = useEditorStore.getState().viewRef?.current
-        if (storeView) {
-          try {
-            const anns = storeView.state.field(annotationField).annotations
-            useAnnotationStore.getState().syncFromEditor(anns)
-          } catch {
-            // annotationField may not be available yet during initialization
-          }
-        }
-      }
-
-      // Selection-only / annotation-only updates skip all doc-derived work
-      if (doc === null) {
-        if (annotationsChanged) syncAnnotations()
-        return
-      }
-      updateContent(doc)
-
-      // Update scene model (debounced internally by script-store)
-      useScriptStore.getState().updateFromContent(doc)
-
-      // Compute stats
+  // Doc-derived stats (also run on first load, when no edit event fires)
+  const computeStats = useCallback(
+    (doc: string) => {
       const lines = doc.split('\n')
       const wordCount = doc.split(/\s+/).filter(Boolean).length
       const totalContentLines = lines.filter((l) => l.trim() !== '').length
@@ -130,6 +101,42 @@ export function EditorPanel(_props: EditorPanelProps) {
         episodeCount,
         sceneCount,
       })
+    },
+    [setStats],
+  )
+
+  const onUpdate = useCallback(
+    ({
+      doc,
+      annotationsChanged,
+      cursorLine,
+    }: { doc: string | null; annotationsChanged: boolean; cursorLine: number }) => {
+      setCursorLine(cursorLine)
+
+      // Sync annotations from CM6 to Zustand (for React sidebar)
+      const syncAnnotations = () => {
+        const storeView = useEditorStore.getState().viewRef?.current
+        if (storeView) {
+          try {
+            const anns = storeView.state.field(annotationField).annotations
+            useAnnotationStore.getState().syncFromEditor(anns)
+          } catch {
+            // annotationField may not be available yet during initialization
+          }
+        }
+      }
+
+      // Selection-only / annotation-only updates skip all doc-derived work
+      if (doc === null) {
+        if (annotationsChanged) syncAnnotations()
+        return
+      }
+      updateContent(doc)
+
+      // Update scene model (debounced internally by script-store)
+      useScriptStore.getState().updateFromContent(doc)
+
+      computeStats(doc)
 
       syncAnnotations()
 
@@ -138,7 +145,7 @@ export function EditorPanel(_props: EditorPanelProps) {
       pendingSaveRef.current = doc
       saveTimerRef.current = setTimeout(flushSave, 2000)
     },
-    [setStats, setCursorLine, updateContent, flushSave],
+    [computeStats, setCursorLine, updateContent, flushSave],
   )
 
   // Flush a pending autosave when the editor unmounts or the page closes
@@ -171,6 +178,7 @@ export function EditorPanel(_props: EditorPanelProps) {
   useEffect(() => {
     if (content) {
       useScriptStore.getState().forceUpdate(content)
+      computeStats(content)
     }
   }, [])
 

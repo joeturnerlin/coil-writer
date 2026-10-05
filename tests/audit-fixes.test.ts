@@ -15,9 +15,9 @@ afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers() 
 const post = (path: string, body: object) => new Request(`https://coil.local${path}`, { method: 'POST', body: JSON.stringify(body) })
 
 test('F1 detectSpeakingCharacter uses the in-context offset when context starts before the doc start', () => {
-  const doc = `${'x\n'.repeat(400)}\nBOB\nHello there.\n\nSome action here.`
+  const doc = `${'x\n'.repeat(400)}\nBOB\nHello there.\n\nALICE\nHi.`
   const from = doc.indexOf('Hello')
-  const context = doc.slice(Math.max(0, from - 500), from + 20)
+  const context = doc.slice(Math.max(0, from - 500), from + 40)
   expect(detectSpeakingCharacter(context, from)).toBe('BOB')
 })
 

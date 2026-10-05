@@ -95,15 +95,23 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
     window.print()
   }
 
-  const handleExportJSON = () => {
+  const handleExportJSON = async () => {
     if (fileName && annotations.length > 0) {
-      exportAnnotationsJSON(annotations, fileName)
+      try {
+        await exportAnnotationsJSON(annotations, fileName)
+      } catch (error) {
+        reportError(error)
+      }
     }
   }
 
-  const handleExportFountain = () => {
+  const handleExportFountain = async () => {
     if (fileName && content && annotations.length > 0) {
-      exportAnnotatedFountain(content, annotations, fileName)
+      try {
+        await exportAnnotatedFountain(content, annotations, fileName)
+      } catch (error) {
+        reportError(error)
+      }
     }
   }
 

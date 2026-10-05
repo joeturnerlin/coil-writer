@@ -175,13 +175,15 @@ export function useAnalysis() {
   const abortRef = useRef<AbortController | null>(null)
 
   // A different document invalidates any in-flight analysis
+  // (not on unmount: leaving the panel must not cancel a paid run)
+  const seenVersionRef = useRef(documentVersion)
   useEffect(() => {
-    return () => {
-      if (abortRef.current) {
-        abortRef.current.abort()
-        abortRef.current = null
-        setAnalysisState({ status: 'idle' })
-      }
+    if (seenVersionRef.current === documentVersion) return
+    seenVersionRef.current = documentVersion
+    if (abortRef.current) {
+      abortRef.current.abort()
+      abortRef.current = null
+      setAnalysisState({ status: 'idle' })
     }
   }, [documentVersion, setAnalysisState])
 

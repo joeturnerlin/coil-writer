@@ -6,7 +6,7 @@ import { routeApi, TESTER_PROXY } from '../desktop/tester-proxy'
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs() })
 
 const post = (path: string, body: object) => new Request(`https://coil.local${path}`, { method: 'POST', body: JSON.stringify(body) })
-const rewriteBody = (apiKey: string) => ({ selectedText: 'x', surroundingContext: '', instruction: '', provider: 'anthropic', model: 'm', apiKey })
+const rewriteBody = (apiKey: string) => ({ selectedText: 'x', surroundingContext: '', instruction: '', provider: 'anthropic', model: 'claude-fable-5-1', apiKey })
 
 test('server swaps a valid tester token for the server key and never forwards the token', async () => {
   vi.stubEnv('COIL_TESTER_TOKENS', 'coil_a, coil_b')

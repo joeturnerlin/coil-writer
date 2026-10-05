@@ -6,7 +6,7 @@
 import { AVAILABLE_MODELS } from '../src/lib/models'
 import { proxyAnthropic } from './anthropic'
 import { checkRateLimit, RateLimitError, type RateLimitFeature } from './rate-limit'
-import { applyTesterToken } from './tester'
+import { applyTesterToken, isTesterToken } from './tester'
 
 /** Ceiling on client-requested output tokens (matches analyze). */
 export const MAX_OUTPUT_TOKENS = 16384
@@ -134,7 +134,7 @@ export function createProviderHandler<B extends ProviderBody>({ feature, prepare
     }
 
     const hasApiKey = Boolean(body.apiKey)
-    const usesServerKey = !hasApiKey
+    const usesServerKey = !hasApiKey || isTesterToken(body.apiKey)
     const denied = applyTesterToken(body)
     if (denied) return denied
 
@@ -144,8 +144,8 @@ export function createProviderHandler<B extends ProviderBody>({ feature, prepare
     const maxTokens = clampMaxTokens(prepared.maxTokens, 2048)
     const { provider, model } = body as { provider: NonNullable<B['provider']>; model: string }
 
-    // A caller with no key of their own spends the server's: only the supported model list is allowed.
-    if (usesServerKey && !AVAILABLE_MODELS.some((m) => m.id === model)) {
+    // A caller with no key of their own (or a tester token) spends the server's: only the supported model list is allowed.
+    if (usesServerKey && !AVAILABLE_MODELS.some((m) => m.id === model && m.provider === provider)) {
       return new Response(`Unsupported model: ${model}`, { status: 400 })
     }
 

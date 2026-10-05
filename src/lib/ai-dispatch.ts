@@ -41,7 +41,7 @@ export async function dispatchAI(options: AIDispatchOptions): Promise<AIDispatch
     return await dispatchOnce(options)
   } catch (err) {
     const status = err instanceof AIHttpError ? err.status : 0
-    if (status === 429 || status >= 500) {
+    if (status === 429 || (status >= 500 && status !== 504)) {
       const delay = status === 429 ? 3000 : 1000
       await new Promise((r) => setTimeout(r, delay))
       return dispatchOnce(options)

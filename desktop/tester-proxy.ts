@@ -20,6 +20,8 @@ export async function routeApi(req: Request, local: (req: Request) => Promise<Re
     if (type) headers.set('content-type', type)
     return new Response(await r.text(), { status: r.status, headers })
   } catch (err) {
+    // 504 is not retried by dispatchAI: the hosted call may still be running on the server key
+    if (err instanceof DOMException && err.name === 'TimeoutError') return Response.json({ error: 'Tester proxy timed out' }, { status: 504 })
     return Response.json({ error: err instanceof Error ? err.message : 'Tester proxy request failed' }, { status: 502 })
   }
 }

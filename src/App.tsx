@@ -54,26 +54,28 @@ export function App() {
   // Keyboard shortcuts: focus mode + zoom
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+      // Ctrl+E is CodeMirror's end-of-line on Mac, so only Cmd counts there
+      const mod = /Mac/.test(navigator.platform) ? e.metaKey : e.ctrlKey
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         setFocusMode((prev) => !prev)
       }
       if (e.key === 'Escape') {
         setFocusMode(false)
       }
-      if ((e.metaKey || e.ctrlKey) && (e.key === '=' || e.key === '+')) {
+      if (mod && (e.key === '=' || e.key === '+')) {
         e.preventDefault()
         useSettingsStore.getState().zoomIn()
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === '-') {
+      if (mod && e.key === '-') {
         e.preventDefault()
         useSettingsStore.getState().zoomOut()
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === '0') {
+      if (mod && e.key === '0') {
         e.preventDefault()
         useSettingsStore.getState().resetZoom()
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
+      if (mod && e.key === 'e') {
         e.preventDefault()
         const current = useSettingsStore.getState().editorMode
         useSettingsStore.getState().setEditorMode(current === 'write' ? 'analyze' : 'write')
