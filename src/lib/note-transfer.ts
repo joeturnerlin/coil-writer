@@ -112,6 +112,15 @@ function allIndexesOf(haystack: string, needle: string, start = 0, end = haystac
   return out
 }
 
+/** The saved heading is still the nearest one above `from`, and the saved ±50 chars still surround the text. */
+function offsetCorroborated(anchor: AnchorData, from: number, to: number, content: string): boolean {
+  if (!anchor.anchorHeading && !anchor.anchorContext) return false
+  const here = anchorAnnotation({ from, to } as Annotation, content)
+  if (anchor.anchorHeading && here.anchorHeading !== anchor.anchorHeading) return false
+  if (anchor.anchorContext && here.anchorContext !== anchor.anchorContext) return false
+  return true
+}
+
 /**
  * Resolve an anchor back to document positions.
  *
@@ -129,9 +138,16 @@ export function resolveAnchor(
   originalTo: number,
   selectedText: string,
   content: string,
+  /** The script is not the revision the anchor was saved against: an offset match alone proves nothing. */
+  requireCorroboration = false,
 ): ResolvedAnchor {
-  // ── Step 1: Exact match at original positions ──
-  if (originalFrom >= 0 && originalTo <= content.length && content.slice(originalFrom, originalTo) === selectedText) {
+  // ── Step 1: Exact match at original positions (on a changed script, only when heading AND context agree) ──
+  if (
+    originalFrom >= 0 &&
+    originalTo <= content.length &&
+    content.slice(originalFrom, originalTo) === selectedText &&
+    (!requireCorroboration || offsetCorroborated(anchor, originalFrom, originalTo, content))
+  ) {
     return { from: originalFrom, to: originalTo, confidence: 'exact' }
   }
   const orphan = (candidates?: number[]): ResolvedAnchor => ({

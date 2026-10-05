@@ -26,6 +26,8 @@ interface Pending {
 let loadedFor: string | null = null
 let pending: Pending | null = null
 let timer: ReturnType<typeof setTimeout> | null = null
+/** Every save runs after the previous one, so a load can wait for "everything written so far". */
+let saveChain: Promise<void> = Promise.resolve()
 
 export function buildStoredNotes(
   content: string,
@@ -78,12 +80,15 @@ export function flushNotes(): Promise<void> {
   timer = null
   const p = pending
   pending = null
-  if (!p) return Promise.resolve()
-  return ensureDocument(p.documentId, p.fileName, p.content, p.fileKey)
-    .then(() =>
-      saveNotes(p.documentId, p.fileName, buildStoredNotes(p.content, p.fileName, p.annotations, p.needsPlacing)),
-    )
-    .catch((error) => console.warn('notes save failed', error))
+  if (!p) return saveChain
+  saveChain = saveChain.then(() =>
+    ensureDocument(p.documentId, p.fileName, p.content, p.fileKey)
+      .then(() =>
+        saveNotes(p.documentId, p.fileName, buildStoredNotes(p.content, p.fileName, p.annotations, p.needsPlacing)),
+      )
+      .catch((error) => console.warn('notes save failed', error)),
+  )
+  return saveChain
 }
 
 /** Subscribe once: any change to notes of the open (and loaded) document schedules a save. */
@@ -113,19 +118,22 @@ export function installNotesPersistence(): () => void {
 
 /** Switch the editor's notes to `documentId`'s stored ones. Call after the document text is in the view. */
 export function openNotesFor(view: EditorView, documentId: string): () => void {
-  void flushNotes()
+  // Anything still pending (or in flight) for the previous open must reach storage BEFORE we read it back.
+  const settled = flushNotes()
   loadedFor = null
   view.dispatch({ effects: clearAnnotations.of() })
   useAnnotationStore.getState().setNeedsPlacing([])
   useAnnotationStore.getState().setSelectedId(null)
   let cancelled = false
-  loadNotes(documentId)
+  settled
+    .then(() => loadNotes(documentId))
     .then((stored) => {
       if (cancelled) return
       const { placed, needsPlacing } = resolveStoredNotes(stored, view.state.doc.toString())
-      loadedFor = documentId
+      // loadedFor stays null until the notes are in the editor and store: a load never schedules a save.
       if (placed.length > 0) view.dispatch({ effects: placed.map((n) => addAnnotation.of(n)) })
       useAnnotationStore.getState().setNeedsPlacing(needsPlacing)
+      loadedFor = documentId
     })
     .catch((error) => {
       console.warn('notes load failed', error)

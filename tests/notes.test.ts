@@ -97,7 +97,7 @@ test('export → edit → import: certain notes are placed, an ambiguous repeate
   const edited = `A new opening line.\n\n${SCRIPT.replace('BOB', 'ANNA')}`
   const view = fakeView(edited)
   useAnnotationStore.setState({ annotations: [], needsPlacing: [], selectedId: null })
-  const plan = notes.importNotesFile(view, file)
+  const plan = await notes.importNotesFile(view, file)
   sync(view)
   expect(plan.placed.map((n) => n.id)).toEqual([(n1 as { id: string }).id])
   expect(edited.slice(plan.placed[0].from, plan.placed[0].to)).toBe('We need to talk.')
@@ -108,7 +108,7 @@ test('export → edit → import: certain notes are placed, an ambiguous repeate
   expect(getAnnotations(view)).toHaveLength(1)
 
   // Dedupe by id: importing the same file again adds nothing
-  const again = notes.importNotesFile(view, file)
+  const again = await notes.importNotesFile(view, file)
   expect(again).toMatchObject({ placed: [], needsPlacing: [], duplicates: 2 })
 
   // "Attach here": select the right "No." and place the waiting note
@@ -151,3 +151,54 @@ test('a read-only reviewer (no edits, so no autosave row) still gets their docum
   await ensureDocument('doc-ro', 'ro.fountain', 'TEXT', null)
   expect(await findDocumentByNameAndContent('ro.fountain', 'NEWER')).toBe('doc-ro')
 })
+
+test('import into a CHANGED script: an offset-only match is not trusted (swapped equal-size scenes)', async () => {
+  const A = 'INT. KITCHEN - DAY\n\nANNA\nNo.\n\n'
+  const B = 'INT. GARAGE - NIGHT\n\nANNA\nNo.\n\n'
+  const original = A + B
+  const swapped = B + A
+  const author = fakeView(original)
+  const at = original.lastIndexOf('No.')
+  notes.createNote(author, at, at + 3, 'Garage No')
+  const file = JSON.parse(
+    JSON.stringify(await buildNotesExport(getAnnotations(author), [], 'x.fountain', original, 'Me', 'doc-sw')),
+  )
+  // same text: exact offsets are kept
+  useAnnotationStore.setState({ annotations: [], needsPlacing: [], selectedId: null })
+  const same = await notes.importNotesFile(fakeView(original), file)
+  expect(same.placed[0].from).toBe(at)
+  // swapped scenes: the note must follow the GARAGE scene, never sit on the old offset (now the kitchen "No.")
+  useAnnotationStore.setState({ annotations: [], needsPlacing: [], selectedId: null })
+  const plan = await notes.importNotesFile(fakeView(swapped), file)
+  expect(plan.placed.map((n) => n.from)).not.toContain(at)
+  for (const n of plan.placed) expect(n.from).toBe(swapped.indexOf('No.'))
+  // a heading-less, context-less anchor on a changed script is never trusted by offset alone
+  const bare = { format: 'coil-notes', revisionHash: 'x', annotations: [{ id: 'q', comment: 'c', selectedText: 'No.', from: at, to: at + 3 }] }
+  const p2 = notes.planNoteImport(bare, original, new Set())
+  expect(p2.placed).toHaveLength(0)
+  expect(p2.needsPlacing).toHaveLength(1)
+})
+
+test('reopening a document before the notes debounce: the newer notes survive (no stale overwrite)', async () => {
+  const { openNotesFor, installNotesPersistence } = await import('../src/lib/notes-sync')
+  const { useEditorStore } = await import('../src/store/editor-store')
+  vi.stubGlobal('window', { addEventListener() {}, removeEventListener() {} })
+  const view = fakeView(SCRIPT)
+  const from = SCRIPT.indexOf('We need')
+  const note = notes.createNote(view, from, from + 16, 'first') as { id: string }
+  await saveNotes('doc-r', 'x.fountain', buildStoredNotes(SCRIPT, 'x.fountain', getAnnotations(view), []))
+  useEditorStore.setState({ documentId: 'doc-r', fileName: 'x.fountain', content: SCRIPT, fileKey: null } as never)
+  const off = installNotesPersistence()
+  openNotesFor(view, 'doc-r')
+  await new Promise((r) => setTimeout(r, 50))
+  // edit within the debounce window, then reopen the SAME document immediately
+  notes.editNote(view, note.id, 'edited')
+  sync(view)
+  openNotesFor(view, 'doc-r')
+  await new Promise((r) => setTimeout(r, 100))
+  expect(getAnnotations(view)[0].comment).toBe('edited')
+  expect(useAnnotationStore.getState().annotations[0]?.comment ?? 'edited').toBe('edited')
+  await new Promise((r) => setTimeout(r, 2700))
+  expect((await loadNotes('doc-r'))[0].note.comment).toBe('edited')
+  off()
+}, 10000)

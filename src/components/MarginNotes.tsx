@@ -50,6 +50,8 @@ export function MarginNotes() {
     const mode: Layout['mode'] = free >= MIN_CARD_W + EDGE ? 'cards' : 'markers'
     const cardW = Math.min(MAX_CARD_W, Math.max(MIN_CARD_W, free - EDGE - 4))
     const step = mode === 'cards' ? CARD_H + GAP : MARKER + 4
+    // Live position: view.documentTop is cached from CodeMirror's last measure, which an outer scroller never refreshes
+    const docTop = view.contentDOM.getBoundingClientRect().top + view.documentPadding.top
     const len = view.state.doc.length
     const sorted = [...useAnnotationStore.getState().annotations]
       .filter((a) => a.from < a.to)
@@ -57,7 +59,11 @@ export function MarginNotes() {
     const items: Placed[] = []
     let floor = Number.NEGATIVE_INFINITY
     for (const a of sorted) {
-      const top = view.documentTop + view.lineBlockAt(Math.min(a.from, len)).top - lr.top
+      const pos = Math.min(a.from, len)
+      // The passage's own first visual line when it is rendered (the line block's top sits a few px higher, and a
+      // wrapped line's block starts above the row the passage is on); the block estimate for far-off lines.
+      const coords = view.coordsAtPos(pos, 1)
+      const top = (coords ? coords.top : docTop + view.lineBlockAt(pos).top) - lr.top
       const y = Math.max(top, floor)
       floor = y + step
       items.push({ id: a.id, y })
@@ -77,12 +83,17 @@ export function MarginNotes() {
     const view = viewRef?.current
     const layer = layerRef.current
     if (!view || !layer) return
-    view.scrollDOM.addEventListener('scroll', schedule, { passive: true })
+    // EditorPanel scrolls an outer wrapper (not view.scrollDOM) for tall scripts. Scroll doesn't bubble, so listen in
+    // the capture phase on the layer's parent: that catches the editor's own scroller and every ancestor scroller.
+    const host = layer.parentElement ?? layer
+    host.addEventListener('scroll', schedule, { passive: true, capture: true })
+    window.addEventListener('resize', schedule)
     const ro = new ResizeObserver(schedule)
     ro.observe(layer)
     ro.observe(view.contentDOM)
     return () => {
-      view.scrollDOM.removeEventListener('scroll', schedule)
+      host.removeEventListener('scroll', schedule, { capture: true })
+      window.removeEventListener('resize', schedule)
       ro.disconnect()
       if (raf.current) cancelAnimationFrame(raf.current)
       raf.current = 0

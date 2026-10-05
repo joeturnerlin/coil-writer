@@ -9,7 +9,7 @@ import type { Annotation } from '../editor/types'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
 import { useSettingsStore } from '../store/settings-store'
-import { NOTES_FORMAT, exportAnnotationsJSON } from './export'
+import { NOTES_FORMAT, exportAnnotationsJSON, sha256Hex } from './export'
 import { type AnchorData, resolveAnchor } from './note-transfer'
 
 export function getView(): EditorView | null {
@@ -110,8 +110,14 @@ const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v)
  * Pure planning step of an import: re-anchor each note against the CURRENT text.
  * exact / heading / fuzzy → placed; ambiguous / orphaned → needsPlacing (never placed on a guess).
  * Notes whose id is already present (placed or waiting) are skipped.
+ * `sameRevision`: the file's revisionHash equals the current text's. Otherwise an offset-only match is not trusted.
  */
-export function planNoteImport(file: unknown, content: string, existingIds: Set<string>): ImportPlan {
+export function planNoteImport(
+  file: unknown,
+  content: string,
+  existingIds: Set<string>,
+  sameRevision = false,
+): ImportPlan {
   const data = file as { format?: unknown; annotations?: unknown }
   if (!data || typeof data !== 'object' || !Array.isArray(data.annotations)) {
     throw new Error('This file is not a Coil notes file.')
@@ -148,7 +154,7 @@ export function planNoteImport(file: unknown, content: string, existingIds: Set<
       anchorCharacter: note.anchorCharacter ?? '',
       fileName: '',
     }
-    const r = resolveAnchor(anchor, note.from, note.to, selectedText, content)
+    const r = resolveAnchor(anchor, note.from, note.to, selectedText, content, !sameRevision)
     if (r.confidence === 'exact' || r.confidence === 'heading' || r.confidence === 'fuzzy') {
       plan.placed.push({
         ...note,
@@ -166,10 +172,13 @@ export function planNoteImport(file: unknown, content: string, existingIds: Set<
 }
 
 /** Apply an import to the open document. Returns the plan for the caller's summary line. */
-export function importNotesFile(view: EditorView, file: unknown): ImportPlan {
+export async function importNotesFile(view: EditorView, file: unknown): Promise<ImportPlan> {
+  const content = view.state.doc.toString()
+  const exported = (file as { revisionHash?: unknown } | null)?.revisionHash
+  const sameRevision = typeof exported === 'string' && exported === (await sha256Hex(content))
   const store = useAnnotationStore.getState()
   const ids = new Set([...view.state.field(annotationField).annotations, ...store.needsPlacing].map((n) => n.id))
-  const plan = planNoteImport(file, view.state.doc.toString(), ids)
+  const plan = planNoteImport(file, content, ids, sameRevision)
   view.dispatch({ effects: plan.placed.map((n) => addAnnotation.of(n)) })
   if (plan.needsPlacing.length > 0) store.setNeedsPlacing([...store.needsPlacing, ...plan.needsPlacing])
   return plan
@@ -186,7 +195,7 @@ export function pickAndImportNotes(): Promise<ImportPlan | null> {
       const view = getView()
       if (!file || !view) return resolve(null)
       try {
-        resolve(importNotesFile(view, JSON.parse(await file.text())))
+        resolve(await importNotesFile(view, JSON.parse(await file.text())))
       } catch (e) {
         reject(e instanceof SyntaxError ? new Error('This file is not a Coil notes file.') : e)
       }
