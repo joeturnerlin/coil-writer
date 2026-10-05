@@ -1,0 +1,7 @@
+release
+dist-desktop
+verification
+e2e/screenshots
+test-results
+.codex-agent
+.codex-agent.lock
