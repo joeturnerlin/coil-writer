@@ -1,3 +1,4 @@
+import { openSearchPanel } from '@codemirror/search'
 import {
   Archive,
   BarChart3,
@@ -11,7 +12,9 @@ import {
   Palette,
   Pen,
   Printer,
+  Search,
   Settings,
+  SpellCheck,
   Upload,
   ZoomIn,
   ZoomOut,
@@ -27,6 +30,7 @@ import { useSettingsStore } from '../store/settings-store'
 import { useStashStore } from '../store/stash-store'
 import { PRESET_LIST } from '../themes/presets'
 import { CheatSheetButton } from './CheatSheet'
+import { VersionHistoryButton } from './VersionHistoryPanel'
 
 interface ToolbarProps {
   onToggleFocus: () => void
@@ -46,6 +50,8 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
     setEditorMode,
     showEpisodeNav,
     toggleEpisodeNav,
+    showProofread,
+    toggleProofread,
   } = useSettingsStore()
   const { annotations } = useAnnotationStore()
   const [showExportMenu, setShowExportMenu] = useState(false)
@@ -400,6 +406,44 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
       >
         <List size={14} />
         <span>{content && !/\[\[EPISODE\s+\d+/i.test(content) ? 'Scenes' : 'Episodes'}</span>
+      </button>
+
+      {/* Find & Replace */}
+      <ToolbarButton
+        onClick={() => {
+          const view = useEditorStore.getState().viewRef?.current
+          if (view) openSearchPanel(view)
+        }}
+        icon={<Search size={14} />}
+        title="Find and replace (Cmd+F)"
+      />
+
+      {/* Version history */}
+      <VersionHistoryButton />
+
+      {/* Proofread */}
+      <button
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px',
+          padding: '4px 10px',
+          fontSize: '11px',
+          fontWeight: showProofread ? 600 : 500,
+          background: showProofread ? 'var(--accent-cyan-dim)' : 'transparent',
+          border: showProofread ? '1px solid var(--accent-cyan)' : '1px solid transparent',
+          borderRadius: '5px',
+          color: showProofread ? 'var(--accent-cyan)' : 'var(--text-muted)',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+          fontFamily: "'JetBrains Mono', 'Inter', sans-serif",
+        }}
+        onClick={toggleProofread}
+        type="button"
+        title="Proofread: spelling, wrong names, day/night errors"
+      >
+        <SpellCheck size={14} />
+        <span>Proofread</span>
       </button>
 
       {/* Focus */}

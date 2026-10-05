@@ -8,6 +8,7 @@
 import { useCallback, useRef, useState } from 'react'
 import { jumpTo } from '../editor/navigation'
 import type { StructureFramework } from '../editor/types'
+import { classifyAIError } from '../lib/ai-fetch'
 import type { SceneBlock } from '../lib/scene-model'
 import type { BeatMapping, GapWarning, StructureResult } from '../lib/structure-analysis'
 import { analyzeStructure } from '../lib/structure-analysis'
@@ -15,6 +16,7 @@ import { useEditorStore } from '../store/editor-store'
 import { useScriptStore } from '../store/script-store'
 import { useSettingsStore } from '../store/settings-store'
 import { useSubscriptionStore } from '../store/subscription-store'
+import { RetryNotice } from './RetryNotice'
 
 // ── Beat category colors ──
 
@@ -61,6 +63,7 @@ export function StructurePanel() {
   const [result, setResult] = useState<StructureResult | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [errorRetryable, setErrorRetryable] = useState(false)
   const abortRef = useRef<AbortController | null>(null)
 
   const handleAnalyze = useCallback(async () => {
@@ -81,6 +84,7 @@ export function StructurePanel() {
     } catch (err) {
       if ((err as Error).name !== 'AbortError') {
         setError((err as Error).message || 'Analysis failed')
+        setErrorRetryable(classifyAIError(err).retryable)
       }
     } finally {
       setLoading(false)
@@ -267,15 +271,7 @@ export function StructurePanel() {
 
       {/* Error state */}
       {error && (
-        <div
-          style={{
-            padding: '8px',
-            fontSize: '9px',
-            color: 'var(--structure-gap, #ef5350)',
-          }}
-        >
-          {error}
-        </div>
+        <RetryNotice message={error} retryable={errorRetryable} busy={loading} onRetry={handleAnalyzeWithCategories} />
       )}
 
       {/* Scene cells */}

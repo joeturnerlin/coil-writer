@@ -90,13 +90,38 @@ export function anchorAnnotation(annotation: Annotation, content: string, fileNa
   }
 }
 
+export type AnchorConfidence = 'exact' | 'heading' | 'fuzzy' | 'ambiguous' | 'orphaned'
+
+export interface ResolvedAnchor {
+  from: number
+  to: number
+  confidence: AnchorConfidence
+  /** Start offsets of the plausible matches when ambiguous (or a lone context-free match when orphaned) — for a reattach prompt. */
+  candidates?: number[]
+}
+
+function allIndexesOf(haystack: string, needle: string, start = 0, end = haystack.length): number[] {
+  const out: number[] = []
+  if (!needle) return out
+  const region = haystack.slice(start, end)
+  let i = region.indexOf(needle)
+  while (i !== -1) {
+    out.push(start + i)
+    i = region.indexOf(needle, i + 1)
+  }
+  return out
+}
+
 /**
- * Resolve an anchor back to document positions using a 4-step recovery chain.
+ * Resolve an anchor back to document positions.
  *
- * 1. exact:    original positions still hold the same text
- * 2. heading:  find scene heading, search within 500 chars after it
- * 3. fuzzy:    search entire document for context substring
- * 4. orphaned: return original positions (annotation is lost)
+ * 1. exact:     original positions still hold the same text
+ * 2. heading:   the text occurs exactly once within 500 chars after a matching scene heading
+ * 3. fuzzy:     the text occurs exactly once inside a place where the saved context matches
+ * 4. ambiguous: several equally good candidates — the caller must ask the user to reattach
+ * 5. orphaned:  no contextual match — original positions returned, annotation is lost
+ *
+ * It NEVER falls back to the first global match of the text: a note on "No." must not land on a different "No.".
  */
 export function resolveAnchor(
   anchor: AnchorData,
@@ -104,68 +129,66 @@ export function resolveAnchor(
   originalTo: number,
   selectedText: string,
   content: string,
-): { from: number; to: number; confidence: 'exact' | 'heading' | 'fuzzy' | 'orphaned' } {
+): ResolvedAnchor {
   // ── Step 1: Exact match at original positions ──
   if (originalFrom >= 0 && originalTo <= content.length && content.slice(originalFrom, originalTo) === selectedText) {
     return { from: originalFrom, to: originalTo, confidence: 'exact' }
   }
+  const orphan = (candidates?: number[]): ResolvedAnchor => ({
+    from: originalFrom,
+    to: originalTo,
+    confidence: candidates && candidates.length > 1 ? 'ambiguous' : 'orphaned',
+    ...(candidates && candidates.length > 0 ? { candidates } : {}),
+  })
+  if (!selectedText) return orphan()
 
-  // ── Step 2: Heading remap ──
-  if (anchor.anchorHeading && selectedText) {
-    const headingIdx = content.indexOf(anchor.anchorHeading)
-    if (headingIdx !== -1) {
-      // Search within 500 chars after the heading
-      const searchStart = headingIdx
-      const searchEnd = Math.min(content.length, headingIdx + anchor.anchorHeading.length + 500)
-      const searchRegion = content.slice(searchStart, searchEnd)
-      const textIdx = searchRegion.indexOf(selectedText)
-      if (textIdx !== -1) {
-        const newFrom = searchStart + textIdx
-        const newTo = newFrom + selectedText.length
-        return { from: newFrom, to: newTo, confidence: 'heading' }
-      }
+  const hit = (from: number, confidence: 'heading' | 'fuzzy'): ResolvedAnchor => ({
+    from,
+    to: from + selectedText.length,
+    confidence,
+  })
+  const ambiguous = new Set<number>()
+
+  // ── Step 2: Heading remap — every occurrence of the heading, text must be unique across their windows ──
+  if (anchor.anchorHeading) {
+    const found = new Set<number>()
+    for (const h of allIndexesOf(content, anchor.anchorHeading)) {
+      const end = Math.min(content.length, h + anchor.anchorHeading.length + 500)
+      for (const i of allIndexesOf(content, selectedText, h, end)) found.add(i)
     }
+    if (found.size === 1) return hit([...found][0], 'heading')
+    for (const i of found) ambiguous.add(i)
   }
 
-  // ── Step 3: Fuzzy — search entire document for context substring ──
-  if (anchor.anchorContext && selectedText) {
-    // Try finding the full context string first
-    let contextIdx = content.indexOf(anchor.anchorContext)
-
-    if (contextIdx === -1) {
-      // Fall back to a 20-char core substring from the middle of anchorContext
-      const ctx = anchor.anchorContext
-      if (ctx.length >= 20) {
-        const mid = Math.floor(ctx.length / 2)
-        const sub = ctx.slice(Math.max(0, mid - 10), mid + 10)
-        contextIdx = content.indexOf(sub)
+  // ── Step 3: Context — the saved ±50 chars (or a 20-char core of them) around the text ──
+  if (anchor.anchorContext) {
+    const ctx = anchor.anchorContext
+    // anchorAnnotation saved up to 50 chars before the text; fall back to its first position in the context
+    const within = ctx.startsWith(selectedText, Math.min(50, originalFrom))
+      ? Math.min(50, originalFrom)
+      : ctx.indexOf(selectedText)
+    const candidates = new Set<number>()
+    if (within !== -1) {
+      for (const c of allIndexesOf(content, ctx)) candidates.add(c + within)
+    }
+    if (candidates.size === 0 && ctx.length >= 20 && within !== -1) {
+      const mid = Math.floor(ctx.length / 2)
+      const coreStart = Math.max(0, mid - 10)
+      const core = ctx.slice(coreStart, mid + 10)
+      for (const c of allIndexesOf(content, core)) {
+        // Text must sit in the same relative place the core had inside the saved context
+        const from = c - coreStart + within
+        if (from >= 0 && content.slice(from, from + selectedText.length) === selectedText) candidates.add(from)
       }
     }
-
-    if (contextIdx !== -1) {
-      // Within the found context region, locate the selected text
-      const regionStart = Math.max(0, contextIdx - 50)
-      const regionEnd = Math.min(content.length, contextIdx + anchor.anchorContext.length + 50)
-      const region = content.slice(regionStart, regionEnd)
-      const textIdx = region.indexOf(selectedText)
-      if (textIdx !== -1) {
-        const newFrom = regionStart + textIdx
-        const newTo = newFrom + selectedText.length
-        return { from: newFrom, to: newTo, confidence: 'fuzzy' }
-      }
-    }
-
-    // Last resort: search entire document for selectedText
-    const globalIdx = content.indexOf(selectedText)
-    if (globalIdx !== -1) {
-      return {
-        from: globalIdx,
-        to: globalIdx + selectedText.length,
-        confidence: 'fuzzy',
-      }
-    }
+    if (candidates.size === 1) return hit([...candidates][0], 'fuzzy')
+    for (const i of candidates) ambiguous.add(i)
   }
 
-  // ── Step 4: Orphaned — cannot recover ──
-  return { from: originalFrom, to: originalTo, confidence: 'orphaned' }
+  // ── Step 4/5: no unique contextual match ──
+  const list = [...ambiguous].sort((a, b) => a - b)
+  if (list.length > 1) return orphan(list)
+  // A lone text match with no corroborating context is offered for reattachment, never applied.
+  const global = allIndexesOf(content, selectedText)
+  return orphan(list.length === 1 ? list : global.length > 0 && global.length <= 10 ? global : undefined)
 }

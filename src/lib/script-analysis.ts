@@ -1,4 +1,6 @@
+import { recordUsage } from '../store/ai-activity-store'
 import { useAIStore } from '../store/ai-store'
+import { aiFetch, httpError } from './ai-fetch'
 import { DEFAULT_MODEL } from './models'
 /**
  * Script Analysis — sends full screenplay through the shared analysis handler.
@@ -7,6 +9,7 @@ import { DEFAULT_MODEL } from './models'
  */
 
 import { deleteVoiceProfile, getVoiceProfile, saveVoiceProfile } from './persistence'
+import { usageFromWire } from './usage'
 import type { VoiceProfile } from './voice-profile'
 import { hashScript } from './voice-profile'
 
@@ -91,7 +94,7 @@ export async function analyzeScriptViaProxy(scriptContent: string, signal?: Abor
     }
   }
 
-  const response = await fetch('/api/analyze', {
+  const response = await aiFetch('/api/analyze', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal,
@@ -100,11 +103,12 @@ export async function analyzeScriptViaProxy(scriptContent: string, signal?: Abor
 
   if (!response.ok) {
     const err = await response.text()
-    throw new Error(`Analysis proxy error ${response.status}: ${err}`)
+    throw httpError('Analysis proxy error', response.status, err)
   }
 
   const data = await response.json()
   if (data.error) throw new Error(data.error)
+  recordUsage(DEFAULT_MODEL.id, usageFromWire(data.usage))
 
   const profile = parseProfileResponse(data.text, sourceHash, DEFAULT_MODEL.id)
 

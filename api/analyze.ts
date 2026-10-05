@@ -10,6 +10,7 @@
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { DEFAULT_MODEL } from '../src/lib/models'
+import { parseAnthropicUsage } from '../src/lib/usage'
 import { extractAnthropicText, requestAnthropic } from './anthropic'
 import { applyTesterToken } from './tester'
 
@@ -54,7 +55,7 @@ export async function handleAnalysis(req: Request): Promise<Response> {
   }
   const denied = applyTesterToken(body)
   if (denied) return denied
-  const apiKey = body.apiKey || process.env.ANTHROPIC_API_KEY
+  const apiKey = body.apiKey
   if (!apiKey) return Response.json({ error: 'No Anthropic API key. Add one in Settings.' }, { status: 400 })
 
   // Rough token estimate — reject if too large
@@ -89,7 +90,7 @@ ${scriptContent}
     if (!response.ok) return Response.json({ error: `Anthropic ${response.status}: ${JSON.stringify(data)}` }, { status: response.status })
     const text = extractAnthropicText(data, true)
     if (!text) return Response.json({ error: 'Empty response from Anthropic' }, { status: 502 })
-    return Response.json({ text })
+    return Response.json({ text, usage: parseAnthropicUsage(data) })
   } catch (err) {
     return Response.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 502 })
   }

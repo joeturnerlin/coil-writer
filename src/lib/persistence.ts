@@ -2,11 +2,19 @@ import Dexie, { type EntityTable } from 'dexie'
 
 /**
  * Dexie database for auto-save.
- * Single table: documents with { id, fileName, content, lastModified }.
+ * Documents are keyed by a stable `documentId` (uuid); fileName is only a display name.
  */
+
+/** Autosave debounce. Single constant; flushSave also runs on unmount / beforeunload. */
+export const AUTOSAVE_INTERVAL_MS = 2000
+
+export function newDocumentId(): string {
+  return crypto.randomUUID()
+}
 
 interface DocumentRecord {
   id?: number
+  documentId: string
   fileName: string
   content: string
   lastModified: number
@@ -21,6 +29,7 @@ interface VoiceProfileRecord {
 
 interface ProfileOverrideRecord {
   id?: number
+  documentId?: string
   fileName: string
   characterName: string
   overrides: string
@@ -30,6 +39,7 @@ interface ProfileOverrideRecord {
 
 interface AnnotationRecord {
   id?: number
+  documentId?: string
   fileName: string
   annotationId: string
   data: string
@@ -40,11 +50,23 @@ interface AnnotationRecord {
 
 interface PendingDeltaRecord {
   id?: number
+  documentId?: string
   fileName: string
   characterName: string
   original: string
   accepted: string
   createdAt: number
+}
+
+export type VersionKind = 'auto' | 'manual' | 'ai' | 'open' | 'pre-restore' | 'restore'
+
+export interface VersionRecord {
+  id?: number
+  documentId: string
+  createdAt: number
+  kind: VersionKind
+  label?: string
+  content: string
 }
 
 interface UsageRecord {
@@ -55,13 +77,14 @@ interface UsageRecord {
   updatedAt: number
 }
 
-const db = new Dexie('RecoilFountainEditor') as Dexie & {
+export const db = new Dexie('RecoilFountainEditor') as Dexie & {
   documents: EntityTable<DocumentRecord, 'id'>
   voiceProfiles: EntityTable<VoiceProfileRecord, 'id'>
   profileOverrides: EntityTable<ProfileOverrideRecord, 'id'>
   annotations: EntityTable<AnnotationRecord, 'id'>
   pendingDeltas: EntityTable<PendingDeltaRecord, 'id'>
   usage: EntityTable<UsageRecord, 'id'>
+  versions: EntityTable<VersionRecord, 'id'>
 }
 
 db.version(1).stores({
@@ -91,24 +114,81 @@ db.version(4).stores({
 })
 
 /**
- * Save or update a document in IndexedDB.
- * Uses fileName as the logical key (upsert by fileName).
+ * v5 migration helper: one new documentId per distinct fileName, so every legacy
+ * row (documents, overrides, annotations, deltas) lands on the same id as its document.
  */
-export async function saveToDB(fileName: string, content: string): Promise<void> {
+export function buildDocumentIdMap(fileNames: string[], makeId: () => string = newDocumentId): Map<string, string> {
+  const map = new Map<string, string>()
+  for (const name of fileNames) if (!map.has(name)) map.set(name, makeId())
+  return map
+}
+
+db.version(5)
+  .stores({
+    documents: '++id, &documentId, fileName, lastModified',
+    voiceProfiles: '++id, sourceHash, createdAt',
+    profileOverrides: '++id, fileName, documentId, [fileName+characterName], [documentId+characterName], updatedAt',
+    annotations: '++id, fileName, documentId, annotationId, createdAt',
+    pendingDeltas: '++id, fileName, documentId, characterName, createdAt',
+    usage: '++id, [feature+period], updatedAt',
+    versions: '++id, documentId, createdAt',
+  })
+  .upgrade(async (tx) => {
+    const related = ['profileOverrides', 'annotations', 'pendingDeltas'] as const
+    const names: string[] = (await tx.table('documents').toArray()).map((d) => d.fileName)
+    for (const t of related) names.push(...(await tx.table(t).toArray()).map((r) => r.fileName))
+    const ids = buildDocumentIdMap(names)
+    for (const t of ['documents', ...related]) {
+      await tx
+        .table(t)
+        .toCollection()
+        .modify((row) => {
+          row.documentId = ids.get(row.fileName)
+        })
+    }
+  })
+
+// A recovered document's id, so callers that still call openFile(name, content) keep the same identity.
+let recoveredHint: { documentId: string; fileName: string; content: string } | null = null
+
+/** Returns the documentId for a just-recovered document (once), else null. */
+export function claimRecoveredId(fileName: string, content: string): string | null {
+  const hint = recoveredHint
+  if (hint && hint.fileName === fileName && hint.content === content) {
+    recoveredHint = null
+    return hint.documentId
+  }
+  return null
+}
+
+/**
+ * Save or update a document in IndexedDB, keyed by documentId.
+ * Resolves only when the Dexie transaction has committed; rejects on failure.
+ */
+// Strictly increasing save stamps: two saves in the same millisecond must still order correctly for recovery.
+let lastSaveStamp = 0
+function nextSaveStamp(): number {
+  lastSaveStamp = Math.max(Date.now(), lastSaveStamp + 1)
+  return lastSaveStamp
+}
+
+export async function saveToDB(documentId: string, fileName: string, content: string): Promise<void> {
   // One rw transaction so concurrent saves can't both see "no row" and each add one.
-  // Known limitation: fileName is the key, so two different files with the same name share one record.
   await db.transaction('rw', db.documents, async () => {
-    const existing = await db.documents.where('fileName').equals(fileName).first()
+    const lastModified = nextSaveStamp()
+    const existing = await db.documents.where('documentId').equals(documentId).first()
     if (existing?.id !== undefined) {
       await db.documents.update(existing.id, {
+        fileName,
         content,
-        lastModified: Date.now(),
+        lastModified,
       })
     } else {
       await db.documents.add({
+        documentId,
         fileName,
         content,
-        lastModified: Date.now(),
+        lastModified,
       })
     }
   })
@@ -117,17 +197,22 @@ export async function saveToDB(fileName: string, content: string): Promise<void>
 /**
  * Get the most recently saved document (for session recovery).
  */
-export async function getRecoveredDocument(): Promise<{ fileName: string; content: string } | null> {
+export async function getRecoveredDocument(): Promise<{
+  documentId: string
+  fileName: string
+  content: string
+} | null> {
   const doc = await db.documents.orderBy('lastModified').last()
   if (!doc) return null
-  return { fileName: doc.fileName, content: doc.content }
+  recoveredHint = { documentId: doc.documentId, fileName: doc.fileName, content: doc.content }
+  return { documentId: doc.documentId, fileName: doc.fileName, content: doc.content }
 }
 
 /**
- * Get a specific document by file name.
+ * Get a specific document by id.
  */
-export async function getDocument(fileName: string): Promise<string | null> {
-  const doc = await db.documents.where('fileName').equals(fileName).first()
+export async function getDocument(documentId: string): Promise<string | null> {
+  const doc = await db.documents.where('documentId').equals(documentId).first()
   return doc?.content ?? null
 }
 
@@ -159,6 +244,7 @@ export async function deleteVoiceProfile(sourceHash: string): Promise<void> {
 }
 
 // ── Profile Overrides ────────────────────────────────────
+// Keyed by documentId when given (callers should pass it); legacy fileName-only calls still work.
 
 /**
  * Save or update a profile override.
@@ -169,8 +255,11 @@ export async function saveProfileOverride(
   characterName: string,
   overrides: string,
   source: 'manual' | 'analysis',
+  documentId?: string,
 ): Promise<void> {
-  const existing = await db.profileOverrides.where('[fileName+characterName]').equals([fileName, characterName]).first()
+  const existing = documentId
+    ? await db.profileOverrides.where('[documentId+characterName]').equals([documentId, characterName]).first()
+    : await db.profileOverrides.where('[fileName+characterName]').equals([fileName, characterName]).first()
 
   if (existing?.id !== undefined) {
     // Don't downgrade manual → analysis
@@ -182,6 +271,7 @@ export async function saveProfileOverride(
     })
   } else {
     await db.profileOverrides.add({
+      documentId,
       fileName,
       characterName,
       overrides,
@@ -192,12 +282,15 @@ export async function saveProfileOverride(
 }
 
 /**
- * Get all profile overrides for a file.
+ * Get all profile overrides for a document (by documentId when given, else fileName).
  */
 export async function getProfileOverrides(
   fileName: string,
+  documentId?: string,
 ): Promise<{ characterName: string; overrides: string; source: 'manual' | 'analysis' }[]> {
-  const records = await db.profileOverrides.where('fileName').equals(fileName).toArray()
+  const records = documentId
+    ? await db.profileOverrides.where('documentId').equals(documentId).toArray()
+    : await db.profileOverrides.where('fileName').equals(fileName).toArray()
   return records.map((r) => ({
     characterName: r.characterName,
     overrides: r.overrides,
@@ -206,10 +299,11 @@ export async function getProfileOverrides(
 }
 
 /**
- * Delete all profile overrides for a file.
+ * Delete all profile overrides for a document.
  */
-export async function deleteProfileOverrides(fileName: string): Promise<void> {
-  await db.profileOverrides.where('fileName').equals(fileName).delete()
+export async function deleteProfileOverrides(fileName: string, documentId?: string): Promise<void> {
+  if (documentId) await db.profileOverrides.where('documentId').equals(documentId).delete()
+  else await db.profileOverrides.where('fileName').equals(fileName).delete()
 }
 
 // ── Pending Deltas ───────────────────────────────────────
@@ -222,8 +316,10 @@ export async function savePendingDelta(
   characterName: string,
   original: string,
   accepted: string,
+  documentId?: string,
 ): Promise<void> {
   await db.pendingDeltas.add({
+    documentId,
     fileName,
     characterName,
     original,
@@ -233,12 +329,15 @@ export async function savePendingDelta(
 }
 
 /**
- * Get all pending deltas for a file.
+ * Get all pending deltas for a document (by documentId when given, else fileName).
  */
 export async function getPendingDeltas(
   fileName: string,
+  documentId?: string,
 ): Promise<{ characterName: string; original: string; accepted: string }[]> {
-  const records = await db.pendingDeltas.where('fileName').equals(fileName).toArray()
+  const records = documentId
+    ? await db.pendingDeltas.where('documentId').equals(documentId).toArray()
+    : await db.pendingDeltas.where('fileName').equals(fileName).toArray()
   return records.map((r) => ({
     characterName: r.characterName,
     original: r.original,
@@ -247,8 +346,9 @@ export async function getPendingDeltas(
 }
 
 /**
- * Clear all pending deltas for a file (after re-analysis).
+ * Clear all pending deltas for a document (after re-analysis).
  */
-export async function clearPendingDeltas(fileName: string): Promise<void> {
-  await db.pendingDeltas.where('fileName').equals(fileName).delete()
+export async function clearPendingDeltas(fileName: string, documentId?: string): Promise<void> {
+  if (documentId) await db.pendingDeltas.where('documentId').equals(documentId).delete()
+  else await db.pendingDeltas.where('fileName').equals(fileName).delete()
 }

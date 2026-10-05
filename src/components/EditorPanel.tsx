@@ -5,7 +5,8 @@ import { fountainDarkTheme, fountainLightTheme } from '../editor/fountain-theme'
 import { buildRewriteSelection } from '../editor/rewrite-selection'
 import { subtextExtension } from '../editor/subtext-decorations'
 import { useCodeMirror } from '../editor/use-codemirror'
-import { saveToDB } from '../lib/persistence'
+import { AUTOSAVE_INTERVAL_MS, saveToDB } from '../lib/persistence'
+import { installVersionHistory } from '../lib/version-history'
 import { useAIStore } from '../store/ai-store'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
@@ -29,8 +30,9 @@ export function EditorPanel(_props: EditorPanelProps) {
   // Track previous fileName to detect when a new file is opened
   const prevDocumentVersionRef = useRef(documentVersion)
 
-  // Latest doc awaiting the debounced autosave (null = nothing pending)
-  const pendingSaveRef = useRef<string | null>(null)
+  // Latest doc awaiting the debounced autosave (null = nothing pending). Carries the document it
+  // belongs to, so a file switch between edit and flush can't write one script under another's id.
+  const pendingSaveRef = useRef<{ doc: string; documentId: string; fileName: string } | null>(null)
 
   const flushSave = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -38,11 +40,21 @@ export function EditorPanel(_props: EditorPanelProps) {
     const pending = pendingSaveRef.current
     pendingSaveRef.current = null
     if (pending === null) return
-    // Read fileName from store directly — same stale closure issue
-    const currentFileName = useEditorStore.getState().fileName
-    if (currentFileName) {
-      saveToDB(currentFileName, pending)
-    }
+    const { setSaveStatus } = useEditorStore.getState()
+    setSaveStatus('saving')
+    // 'saved' only after the Dexie transaction commits; a failure is surfaced and retried.
+    saveToDB(pending.documentId, pending.fileName, pending.doc).then(
+      () => {
+        if (pendingSaveRef.current === null) setSaveStatus('saved')
+      },
+      (error) => {
+        setSaveStatus('failed', error instanceof Error ? error.message : String(error))
+        if (pendingSaveRef.current === null) {
+          pendingSaveRef.current = pending
+          saveTimerRef.current = setTimeout(flushSave, AUTOSAVE_INTERVAL_MS * 2)
+        }
+      },
+    )
   }, [])
 
   // Doc-derived stats (also run on first load, when no edit event fires)
@@ -140,13 +152,22 @@ export function EditorPanel(_props: EditorPanelProps) {
 
       syncAnnotations()
 
-      // Auto-save to IndexedDB (2s debounce); flushSave also runs on unmount / beforeunload
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-      pendingSaveRef.current = doc
-      saveTimerRef.current = setTimeout(flushSave, 2000)
+      // Auto-save to IndexedDB (AUTOSAVE_INTERVAL_MS debounce); flushSave also runs on unmount / beforeunload
+      const { documentId, fileName: currentFileName } = useEditorStore.getState()
+      if (documentId && currentFileName) {
+        // A different document's edit still pending: write it out under its own id first
+        if (pendingSaveRef.current && pendingSaveRef.current.documentId !== documentId) flushSave()
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+        pendingSaveRef.current = { doc, documentId, fileName: currentFileName }
+        useEditorStore.getState().setSaveStatus('saving')
+        saveTimerRef.current = setTimeout(flushSave, AUTOSAVE_INTERVAL_MS)
+      }
     },
     [computeStats, setCursorLine, updateContent, flushSave],
   )
+
+  // Automatic version snapshots (idempotent)
+  useEffect(() => installVersionHistory(), [])
 
   // Flush a pending autosave when the editor unmounts or the page closes
   useEffect(() => {

@@ -5,6 +5,7 @@ import { EditorView, keymap } from '@codemirror/view'
 import { useRevisionStore } from '../store/revision-store'
 import { annotationField } from './annotation-state'
 import { characterAutocomplete } from './character-autocomplete'
+import { createFindPanel } from './find-panel'
 import { fountainLineDecorations, fountainMarkDecorations } from './fountain-decorations'
 import { fountainKeymap } from './fountain-keymap'
 import { fountainLanguage } from './fountain-language'
@@ -74,9 +75,10 @@ export function createEditorExtensions(
 
     // Built-in extensions
     history(),
-    search(),
+    search({ createPanel: createFindPanel }),
     characterAutocomplete(),
     EditorView.lineWrapping,
+    EditorView.contentAttributes.of({ spellcheck: 'true' }), // browser/OS spellcheck underline
     readOnlyCompartment.of(EditorState.readOnly.of(false)),
     subtextCompartment.of([]),
 

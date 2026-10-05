@@ -7,6 +7,7 @@ import { ConversionWarnings } from './components/ConversionWarnings'
 import { DualRewritePopup } from './components/DualRewritePopup'
 import { EditorPanel } from './components/EditorPanel'
 import { FileDropZone } from './components/FileDropZone'
+import { OfflineBanner } from './components/OfflineBanner'
 import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { SettingsDialog } from './components/SettingsDialog'
 import { StashDrawer } from './components/StashDrawer'
@@ -21,8 +22,15 @@ import { useSettingsStore } from './store/settings-store'
 
 export function App() {
   const { fileName, content, importWarnings, importFormat } = useEditorStore()
-  const { theme, showEpisodeNav, showAnnotations, editorMode, onboardingComplete, setOnboardingComplete } =
-    useSettingsStore()
+  const {
+    theme,
+    showEpisodeNav,
+    showAnnotations,
+    showProofread,
+    editorMode,
+    onboardingComplete,
+    setOnboardingComplete,
+  } = useSettingsStore()
   const tourStep = useOnboardingStore((s) => s.tourStep)
   const [focusMode, setFocusMode] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -46,7 +54,7 @@ export function App() {
     if (hasDocument) return
     getRecoveredDocument().then((doc) => {
       if (doc && useEditorStore.getState().content === null) {
-        useEditorStore.getState().openFile(doc.fileName, doc.content)
+        useEditorStore.getState().openFile(doc.fileName, doc.content, undefined, doc.documentId)
       }
     })
   }, [])
@@ -96,6 +104,8 @@ export function App() {
         />
       )}
 
+      <OfflineBanner />
+
       {/* Conversion warnings toast */}
       {!focusMode && importWarnings.length > 0 && (
         <ConversionWarnings
@@ -116,7 +126,9 @@ export function App() {
         </div>
 
         {/* Right panel — contextual by mode */}
-        {!focusMode && hasDocument && (editorMode === 'analyze' || showAnnotations) && <ContextualRightPanel />}
+        {!focusMode && hasDocument && (editorMode === 'analyze' || showAnnotations || showProofread) && (
+          <ContextualRightPanel />
+        )}
       </div>
 
       {/* Stash drawer — between editor and stats bar */}

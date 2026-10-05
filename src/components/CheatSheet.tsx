@@ -177,7 +177,7 @@ function CheatSheetPanel({ onClose }: { onClose: () => void }) {
           <Shortcut keys="Cmd+0" desc="Reset zoom to 100% (12pt Courier Prime)" />
           <Shortcut keys="Cmd+Z" desc="Undo" />
           <Shortcut keys="Cmd+Shift+Z" desc="Redo" />
-          <Shortcut keys="Cmd+F" desc="Find in document" />
+          <Shortcut keys="Cmd+F" desc="Find and replace in document (also the magnifier in the toolbar)" />
         </Section>
 
         <Section title="Page Format">

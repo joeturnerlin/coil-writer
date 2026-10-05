@@ -220,7 +220,10 @@ export function useAnalysis() {
       // Superseded by a newer run or a document change: the newer owner sets state
       if (!isCurrent()) return
       if (timedOut) {
-        setAnalysisState({ status: 'error', message: 'Analysis timed out. Please try again.' })
+        setAnalysisState({
+          status: 'error',
+          message: 'Analysis timed out. Please try again. The request may have been charged.',
+        })
         return
       }
       setAnalysisState({

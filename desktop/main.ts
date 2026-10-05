@@ -9,16 +9,18 @@ import { handleAnalysis } from '../api/analyze'
 import subtext from '../api/subtext'
 import structure from '../api/structure'
 import continuity from '../api/continuity'
+import proofread from '../api/proofread'
 import { routeApi } from './tester-proxy'
 import { FORMAT_DESCRIPTORS } from '../src/lib/converters/registry'
 
-const ownsInstance = app.requestSingleInstanceLock()
+// Mac App Store builds: macOS already enforces one instance; skip Electron's lock there (NOTES-MAS.md M-05)
+const ownsInstance = process.mas || app.requestSingleInstanceLock()
 if (!ownsInstance) app.quit()
 protocol.registerSchemesAsPrivileged([{ scheme: 'coil', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 const origin = 'coil://app'
 const handlers: Record<string, (req: Request) => Promise<Response>> = {
   '/api/rewrite': rewrite, '/api/analyze': handleAnalysis, '/api/subtext': subtext,
-  '/api/structure': structure, '/api/continuity': continuity,
+  '/api/structure': structure, '/api/continuity': continuity, '/api/proofread': proofread,
 }
 let window: BrowserWindow | null = null
 let ready = false

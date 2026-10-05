@@ -1,10 +1,13 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { useEditorStore } from './editor-store'
 
 export type RevisionType = 'ai-rewrite' | 'manual-edit' | 'manual-delete' | 'manual-insert'
 
 export interface Revision {
   id: string
+  /** Document this revision belongs to; absent only on rows saved before documentId existed. */
+  documentId?: string
   /** Absolute character offset at time of change */
   from: number
   to: number
@@ -41,7 +44,10 @@ interface RevisionState {
   currentPass: number
 
   // Actions
-  addRevision: (rev: Omit<Revision, 'id' | 'timestamp' | 'revisionPass'>) => void
+  addRevision: (rev: Omit<Revision, 'id' | 'timestamp' | 'revisionPass' | 'documentId'>) => void
+  /** Revisions of one document (legacy un-owned rows are adopted by the first document opened). */
+  revisionsFor: (documentId: string | null) => Revision[]
+  adoptLegacyRevisions: (documentId: string) => void
   toggleRevisionMode: () => void
   startNewPass: () => void
   clearRevisions: () => void
@@ -59,6 +65,7 @@ export const useRevisionStore = create<RevisionState>()(
         const id = `rev_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
         const entry: Revision = {
           ...rev,
+          documentId: useEditorStore.getState().documentId ?? undefined,
           id,
           timestamp: new Date().toISOString(),
           revisionPass: get().currentPass,
@@ -70,7 +77,23 @@ export const useRevisionStore = create<RevisionState>()(
 
       startNewPass: () => set((s) => ({ currentPass: s.currentPass + 1 })),
 
-      clearRevisions: () => set({ revisions: [], currentPass: 1 }),
+      revisionsFor: (documentId) => get().revisions.filter((r) => r.documentId === documentId),
+
+      adoptLegacyRevisions: (documentId) =>
+        set((s) =>
+          s.revisions.some((r) => r.documentId === undefined)
+            ? { revisions: s.revisions.map((r) => (r.documentId === undefined ? { ...r, documentId } : r)) }
+            : s,
+        ),
+
+      // Clears only the open document's revisions; other documents keep theirs.
+      clearRevisions: () => {
+        const documentId = useEditorStore.getState().documentId
+        set((s) => ({
+          revisions: documentId ? s.revisions.filter((r) => r.documentId !== documentId) : [],
+          currentPass: 1,
+        }))
+      },
 
       removeRevision: (id) => set((s) => ({ revisions: s.revisions.filter((r) => r.id !== id) })),
     }),
@@ -84,3 +107,10 @@ export const useRevisionStore = create<RevisionState>()(
     },
   ),
 )
+
+// Rows saved before documentId existed belong to the first document opened after the upgrade.
+useEditorStore.subscribe((state, prev) => {
+  if (state.documentId && state.documentId !== prev.documentId) {
+    useRevisionStore.getState().adoptLegacyRevisions(state.documentId)
+  }
+})

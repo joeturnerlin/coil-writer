@@ -4,6 +4,7 @@
  */
 
 import { AVAILABLE_MODELS } from '../src/lib/models'
+import { parseGeminiUsage, parseOpenAIUsage } from '../src/lib/usage'
 import { proxyAnthropic } from './anthropic'
 import { checkRateLimit, RateLimitError, type RateLimitFeature } from './rate-limit'
 import { applyTesterToken, isTesterToken } from './tester'
@@ -47,13 +48,13 @@ export async function proxyGemini(system: string, user: string, model: string, m
   }
 
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-  return new Response(JSON.stringify({ text }), {
+  return new Response(JSON.stringify({ text, usage: parseGeminiUsage(data) }), {
     headers: { 'Content-Type': 'application/json' },
   })
 }
 
 export async function proxyOpenAI(system: string, user: string, model: string, maxTokens: number, clientKey?: string) {
-  const apiKey = clientKey || process.env.OPENAI_API_KEY
+  const apiKey = clientKey
   if (!apiKey) {
     return new Response('No OpenAI API key configured', { status: 500 })
   }
@@ -83,7 +84,7 @@ export async function proxyOpenAI(system: string, user: string, model: string, m
   }
 
   const text = data.choices?.[0]?.message?.content
-  return new Response(JSON.stringify({ text }), {
+  return new Response(JSON.stringify({ text, usage: parseOpenAIUsage(data) }), {
     headers: { 'Content-Type': 'application/json' },
   })
 }
@@ -138,6 +139,9 @@ export function createProviderHandler<B extends ProviderBody>({ feature, prepare
     const denied = applyTesterToken(body)
     if (denied) return denied
 
+    // The server's own keys are reachable only through a valid tester token (swapped in above).
+    if (!body.apiKey) return missingKey()
+
     const prepared = prepare(body)
     if (prepared instanceof Response) return prepared
     const { systemPrompt, userPrompt } = prepared
@@ -191,4 +195,9 @@ export function createProviderHandler<B extends ProviderBody>({ feature, prepare
       })
     }
   }
+}
+
+/** Hosted endpoints never spend the server key for an anonymous caller. */
+export function missingKey(): Response {
+  return Response.json({ error: 'Add your own API key in Settings, or a Coil tester token.' }, { status: 401 })
 }

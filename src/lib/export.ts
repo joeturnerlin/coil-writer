@@ -1,12 +1,29 @@
 import type { Annotation } from '../editor/types'
+import { useEditorStore } from '../store/editor-store'
 import { downloadFile } from './file-io'
+import { anchorAnnotation } from './note-transfer'
+
+function exportAnchor(a: Annotation, content: string | null, fileName: string) {
+  const derived = content !== null && a.anchorContext === undefined ? anchorAnnotation(a, content, fileName) : null
+  return {
+    anchorHeading: a.anchorHeading ?? derived?.anchorHeading ?? null,
+    anchorContext: a.anchorContext ?? derived?.anchorContext ?? null,
+    anchorCharacter: a.anchorCharacter ?? derived?.anchorCharacter ?? null,
+  }
+}
 
 /**
- * Export annotations as a JSON file download.
+ * Export annotations as a JSON file download, including anchor fields so notes can be re-attached.
+ * Anchors missing on an annotation are derived from `content` (default: the open document).
  */
-export async function exportAnnotationsJSON(annotations: Annotation[], fileName: string) {
+export async function exportAnnotationsJSON(
+  annotations: Annotation[],
+  fileName: string,
+  content: string | null = useEditorStore.getState().content,
+) {
   const data = {
     source: fileName,
+    documentId: useEditorStore.getState().documentId,
     exportedAt: new Date().toISOString(),
     count: annotations.length,
     annotations: annotations.map((a) => ({
@@ -20,6 +37,7 @@ export async function exportAnnotationsJSON(annotations: Annotation[], fileName:
       from: a.from,
       to: a.to,
       createdAt: a.createdAt,
+      ...exportAnchor(a, content, fileName),
     })),
   }
 

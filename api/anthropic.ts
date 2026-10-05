@@ -1,3 +1,5 @@
+import { parseAnthropicUsage } from '../src/lib/usage'
+
 /** Shared Messages transport for both Vercel handlers and the desktop bundle. */
 export function requestAnthropic(
   system: string, user: string, model: string, maxTokens: number, apiKey: string, signal?: AbortSignal,
@@ -30,7 +32,7 @@ export async function proxyAnthropic(
   maxTokens: number,
   clientKey?: string,
 ) {
-  const apiKey = clientKey || process.env.ANTHROPIC_API_KEY
+  const apiKey = clientKey
   if (!apiKey) {
     return new Response('No Anthropic API key configured', { status: 500 })
   }
@@ -52,7 +54,7 @@ export async function proxyAnthropic(
       headers: { 'Content-Type': 'application/json' },
     })
   }
-  return new Response(JSON.stringify({ text }), {
+  return new Response(JSON.stringify({ text, usage: parseAnthropicUsage(data) }), {
     headers: { 'Content-Type': 'application/json' },
   })
 }

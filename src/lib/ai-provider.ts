@@ -8,7 +8,10 @@
  * Desktop production requests use the same handlers in Electron main.
  */
 
+import { recordUsage } from '../store/ai-activity-store'
+import { aiFetch, classifyAIError, httpError } from './ai-fetch'
 import { escapeRegex } from './regex'
+import { parseAnthropicUsage, parseGeminiUsage, parseOpenAIUsage, usageFromWire } from './usage'
 import type { VoiceProfile } from './voice-profile'
 import { buildCompactProfile, shouldInjectProfile } from './voice-profile'
 
@@ -32,7 +35,23 @@ export interface RewriteResponse {
  * Desktop uses user keys only. In dev, Gemini goes direct and
  * Anthropic/OpenAI are proxied through the Vite dev server.
  */
-export async function requestRewrite(
+export async function requestRewrite(...args: Parameters<typeof requestRewriteOnce>): Promise<RewriteResponse> {
+  try {
+    return await requestRewriteOnce(...args)
+  } catch (err) {
+    // The rewrite popups are frozen and have no Retry button, so transient failures are retried once here
+    // (same policy as dispatchAI). 504 and network drops are not: the first call may already have been charged.
+    const info = classifyAIError(err)
+    const status = (err as { status?: number }).status ?? 0
+    if (info.retryable && !info.uncertain && (status === 429 || status >= 500)) {
+      await new Promise((r) => setTimeout(r, status === 429 ? 3000 : 1000))
+      return requestRewriteOnce(...args)
+    }
+    throw err
+  }
+}
+
+async function requestRewriteOnce(
   selectedText: string,
   surroundingContext: string,
   instruction: string,
@@ -141,7 +160,7 @@ async function callServerProxy(
   apiKey: string,
   profile: VoiceProfile | null,
 ): Promise<RewriteResponse> {
-  const res = await fetch('/api/rewrite', {
+  const res = await aiFetch('/api/rewrite', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -158,17 +177,18 @@ async function callServerProxy(
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`API proxy error: ${res.status} ${err}`)
+    throw httpError('API proxy error', res.status, err)
   }
 
   const data = await res.json()
   if (data.error) throw new Error(data.error)
+  recordUsage(model, usageFromWire(data.usage))
   return parseRewriteJSON(data.text)
 }
 
 async function callAnthropic(system: string, user: string, model: string, apiKey: string): Promise<RewriteResponse> {
   // Proxied through Vite dev server to avoid CORS
-  const res = await fetch('/api/anthropic/v1/messages', {
+  const res = await aiFetch('/api/anthropic/v1/messages', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -185,17 +205,18 @@ async function callAnthropic(system: string, user: string, model: string, apiKey
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Anthropic API error: ${res.status} ${err}`)
+    throw httpError('Anthropic API error', res.status, err)
   }
 
   const data = await res.json()
+  recordUsage(model, parseAnthropicUsage(data))
   const text = data.content[0].text
   return parseRewriteJSON(text)
 }
 
 async function callOpenAI(system: string, user: string, model: string, apiKey: string): Promise<RewriteResponse> {
   // Proxied through Vite dev server to avoid CORS
-  const res = await fetch('/api/openai/v1/chat/completions', {
+  const res = await aiFetch('/api/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -213,17 +234,18 @@ async function callOpenAI(system: string, user: string, model: string, apiKey: s
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`OpenAI API error: ${res.status} ${err}`)
+    throw httpError('OpenAI API error', res.status, err)
   }
 
   const data = await res.json()
+  recordUsage(model, parseOpenAIUsage(data))
   const text = data.choices[0].message.content
   return parseRewriteJSON(text)
 }
 
 async function callGemini(system: string, user: string, model: string, apiKey: string): Promise<RewriteResponse> {
   // Gemini supports CORS — direct call
-  const res = await fetch(
+  const res = await aiFetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
@@ -241,10 +263,11 @@ async function callGemini(system: string, user: string, model: string, apiKey: s
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Gemini API error: ${res.status} ${err}`)
+    throw httpError('Gemini API error', res.status, err)
   }
 
   const data = await res.json()
+  recordUsage(model, parseGeminiUsage(data))
   const text = data.candidates[0].content.parts[0].text
   return parseRewriteJSON(text)
 }

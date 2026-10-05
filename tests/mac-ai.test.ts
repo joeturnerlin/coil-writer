@@ -39,7 +39,7 @@ test.each(['rewrite', 'subtext', 'structure', 'continuity'])('%s requires the us
   vi.stubGlobal('fetch', async () => { throw new Error('Provider network must not be called') })
   const { default: handler } = await import(`../api/${route}`)
   const response = await handler(new Request(`https://coil.local/api/${route}`, { method: 'POST', body: JSON.stringify({ provider: 'google', model: 'gemini-2.5-pro', systemPrompt: 'Analyze', userPrompt: 'Test', selectedText: 'Every frame remembers something.' }) }))
-  expect(response.status).toBe(400)
+  expect(response.status).toBe(401)
 })
 
 test('keyed Google selections remain current while unkeyed or retired models migrate', async () => {

@@ -48,7 +48,7 @@ export function FileDropZone() {
   const handleRecover = async () => {
     const recovered = await getRecoveredDocument()
     if (recovered) {
-      openFile(recovered.fileName, recovered.content)
+      openFile(recovered.fileName, recovered.content, undefined, recovered.documentId)
     }
   }
 

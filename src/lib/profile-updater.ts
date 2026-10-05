@@ -7,6 +7,7 @@
  */
 
 import { useCharacterStore } from '../store/character-store'
+import { useEditorStore } from '../store/editor-store'
 import { savePendingDelta } from './persistence'
 import { escapeRegex } from './regex'
 import type { CharacterProfile } from './voice-profile'
@@ -68,7 +69,13 @@ export async function applyProfileDelta(
     })
   }
 
-  await savePendingDelta(fileName, delta.characterName, originalText, acceptedText)
+  await savePendingDelta(
+    fileName,
+    delta.characterName,
+    originalText,
+    acceptedText,
+    useEditorStore.getState().documentId ?? undefined,
+  )
 }
 
 // Mirrors EditorPanel's context window: context = doc.slice(max(0, from - 500), ...)

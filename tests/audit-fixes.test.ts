@@ -57,11 +57,12 @@ test('F4 extractAnthropicText skips non-text blocks; proxy routes return 502 on 
   expect(res.status).toBe(502)
 })
 
-test('F6 server-key calls need a supported model and clamp maxTokens; BYOK keeps its model choice', async () => {
+test('F6 server-key (tester-token) calls need a supported model and clamp maxTokens; BYOK keeps its model choice', async () => {
   vi.stubEnv('ANTHROPIC_API_KEY', 'server-key')
+  vi.stubEnv('COIL_TESTER_TOKENS', 'coil_t')
   const fetchMock = vi.fn(async () => Response.json({ content: [{ text: 'ok' }] }))
   vi.stubGlobal('fetch', fetchMock)
-  const base = { provider: 'anthropic', systemPrompt: 's', userPrompt: 'u' }
+  const base = { provider: 'anthropic', systemPrompt: 's', userPrompt: 'u', apiKey: 'coil_t' }
   expect((await structure(post('/api/structure', { ...base, model: 'claude-expensive-9' }))).status).toBe(400)
   expect(fetchMock).not.toHaveBeenCalled()
   expect((await structure(post('/api/structure', { ...base, model: 'claude-fable-5-1', maxTokens: 9_000_000 }))).status).toBe(200)
@@ -69,13 +70,13 @@ test('F6 server-key calls need a supported model and clamp maxTokens; BYOK keeps
   expect((await structure(post('/api/structure', { ...base, model: 'other-model', apiKey: 'user-key' }))).status).toBe(200)
 })
 
-test('F10/F11 usage header: finite for keyless, omitted for BYOK; structure reports 999', async () => {
+test('F10/F11 usage header: keyless is refused, omitted for BYOK; structure reports 999', async () => {
   vi.stubEnv('ANTHROPIC_API_KEY', 'server-key')
   vi.stubGlobal('fetch', async () => Response.json({ content: [{ text: 'ok' }] }))
   const body = { selectedText: 'x', surroundingContext: '', instruction: '', provider: 'anthropic', model: 'claude-fable-5-1' }
   expect((await rewrite(post('/api/rewrite', { ...body, apiKey: 'user-key' }))).headers.get('X-Usage-Remaining')).toBeNull()
-  expect((await rewrite(post('/api/rewrite', body))).headers.get('X-Usage-Remaining')).toBe('999')
-  const s = await structure(post('/api/structure', { provider: 'anthropic', model: 'claude-fable-5-1', systemPrompt: 's', userPrompt: 'u' }))
+  expect((await rewrite(post('/api/rewrite', body))).status).toBe(401)
+  const s = await structure(post('/api/structure', { provider: 'anthropic', model: 'claude-fable-5-1', systemPrompt: 's', userPrompt: 'u', apiKey: 'user-key' }))
   expect(s.headers.get('X-Usage-Remaining')).toBe('999')
 })
 

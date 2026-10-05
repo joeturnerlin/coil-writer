@@ -18,13 +18,17 @@ test.each(Object.entries(handlers))('%s preserves Anthropic key precedence, payl
   vi.stubEnv('ANTHROPIC_API_KEY', 'server-key')
   const fetch = vi.fn(async () => Response.json({ content: [{ text: 'first' }, { text: 'second' }] }))
   vi.stubGlobal('fetch', fetch)
-  for (const key of [undefined, 'user-key']) {
+  // A keyless caller never reaches the server key (only a tester token does)
+  const keyless = await handler(request(route))
+  expect(keyless.status).toBe(route === 'analyze' ? 400 : 401)
+  expect(fetch).not.toHaveBeenCalled()
+  for (const key of ['user-key']) {
     const response = await handler(request(route, key))
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ text: route === 'analyze' ? 'first\nsecond' : 'first' })
+    expect(await response.json()).toMatchObject({ text: route === 'analyze' ? 'first\nsecond' : 'first' })
     const [url, init] = fetch.mock.calls.at(-1)! as unknown as [string, RequestInit]
     expect(url).toBe('https://api.anthropic.com/v1/messages')
-    expect(new Headers(init.headers).get('x-api-key')).toBe(key ?? 'server-key')
+    expect(new Headers(init.headers).get('x-api-key')).toBe(key)
     expect(new Headers(init.headers).get('anthropic-version')).toBe('2023-06-01')
     expect(JSON.parse(String(init.body))).toMatchObject({ model: 'claude-fable-5-1', max_tokens: route === 'analyze' ? 16384 : route === 'rewrite' ? 2048 : 321 })
   }
@@ -35,7 +39,7 @@ test.each(Object.entries(handlers))('%s preserves provider errors and missing-ke
   const fetch = vi.fn(async () => Response.json({ error: 'provider-rejection' }, { status: 429 }))
   vi.stubGlobal('fetch', fetch)
   const missing = await handler(request(route))
-  expect(missing.status).toBe(route === 'analyze' ? 400 : 500)
+  expect(missing.status).toBe(route === 'analyze' ? 400 : 401)
   expect(fetch).not.toHaveBeenCalled()
   const rejected = await handler(request(route, 'user-key'))
   expect(rejected.status).toBe(429)
