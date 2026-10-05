@@ -16,7 +16,7 @@ export function ContextualLeftPanel() {
   return (
     <div
       style={{
-        width: '180px',
+        width: '100%',
         flexShrink: 0,
         background: 'var(--bg-secondary)',
         borderRight: '1px solid var(--border-color)',

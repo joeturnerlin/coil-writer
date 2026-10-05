@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { AIRewritePopup } from './components/AIRewritePopup'
 // AnalysisPanel removed — status now in CharacterHub StatusLog
-import { ContextualLeftPanel } from './components/ContextualLeftPanel'
 import { ContextualRightPanel } from './components/ContextualRightPanel'
 import { ConversionWarnings } from './components/ConversionWarnings'
 import { DualRewritePopup } from './components/DualRewritePopup'
 import { EditorPanel } from './components/EditorPanel'
 import { FileDropZone } from './components/FileDropZone'
+import { LeftPanelReopenTab, LeftPanelShell } from './components/LeftPanelShell'
 import { OfflineBanner } from './components/OfflineBanner'
 import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { SettingsDialog } from './components/SettingsDialog'
@@ -116,9 +116,10 @@ export function App() {
       )}
 
       {/* Main content area */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Left panel — contextual by mode */}
-        {!focusMode && showEpisodeNav && hasDocument && <ContextualLeftPanel />}
+        {!focusMode && hasDocument && <LeftPanelShell />}
+        {!focusMode && !showEpisodeNav && hasDocument && <LeftPanelReopenTab />}
 
         {/* Editor or drop zone — center */}
         <div className="flex-1 overflow-hidden">

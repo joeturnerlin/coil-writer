@@ -18,9 +18,14 @@ class SceneNumberMarker extends GutterMarker {
   }
 
   toDOM() {
+    // Outer box is exactly one text line tall (1.6em of the editor font) so the
+    // number centres on the heading's text line, not on its padded line block.
     const el = document.createElement('span')
-    el.textContent = String(this.num)
-    el.className = 'cm-scene-number'
+    el.className = 'cm-scene-number-line'
+    const num = document.createElement('span')
+    num.textContent = String(this.num)
+    num.className = 'cm-scene-number'
+    el.appendChild(num)
     return el
   }
 
@@ -80,9 +85,17 @@ const sceneNumberTheme = EditorView.baseTheme({
   },
   '.cm-scene-number-gutter .cm-gutterElement': {
     display: 'flex',
-    alignItems: 'center',
+    // Heading lines carry zoom-scaled padding (top 24 / bottom 4 at 100%): anchor to the
+    // text line at the bottom, offset by the same bottom padding.
+    alignItems: 'flex-end',
     justifyContent: 'flex-end',
-    padding: '0 4px 0 0',
+    padding: '0 4px calc(4px * var(--zoom-scale, 1)) 0',
+    boxSizing: 'border-box',
+  },
+  '.cm-scene-number-line': {
+    display: 'flex',
+    alignItems: 'center',
+    height: '1.6em',
   },
   '.cm-scene-number': {
     fontSize: '9px',

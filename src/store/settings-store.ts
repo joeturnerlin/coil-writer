@@ -10,6 +10,7 @@ interface SettingsState {
   fontSize: number
   zoomLevel: number
   showEpisodeNav: boolean
+  leftPanelWidth: number
   editorMode: EditorMode
   showAnnotations: boolean
   showProofread: boolean
@@ -27,6 +28,7 @@ interface SettingsState {
   zoomOut: () => void
   resetZoom: () => void
   toggleEpisodeNav: () => void
+  setLeftPanelWidth: (width: number) => void
   setEditorMode: (mode: EditorMode) => void
   toggleAnnotations: () => void
   toggleProofread: () => void
@@ -36,6 +38,10 @@ interface SettingsState {
   setActiveLeftTab: (tab: AnalyzeLeftTab) => void
   setOnboardingComplete: (complete: boolean) => void
 }
+
+export const LEFT_PANEL_MIN = 160
+export const LEFT_PANEL_MAX = 480
+export const LEFT_PANEL_DEFAULT = 180
 
 const CYCLE_ORDER: PresetId[] = ['recoil', 'muted', 'light']
 
@@ -49,6 +55,7 @@ export const useSettingsStore = create<SettingsState>()(
       fontSize: 16,
       zoomLevel: 120,
       showEpisodeNav: true,
+      leftPanelWidth: LEFT_PANEL_DEFAULT,
       editorMode: 'write' as EditorMode,
       showAnnotations: false,
       showProofread: false,
@@ -76,6 +83,8 @@ export const useSettingsStore = create<SettingsState>()(
       zoomOut: () => set((s) => ({ zoomLevel: Math.max(70, s.zoomLevel - 10) })),
       resetZoom: () => set({ zoomLevel: 120 }),
       toggleEpisodeNav: () => set((s) => ({ showEpisodeNav: !s.showEpisodeNav })),
+      setLeftPanelWidth: (width) =>
+        set({ leftPanelWidth: Math.round(Math.max(LEFT_PANEL_MIN, Math.min(LEFT_PANEL_MAX, width))) }),
       setEditorMode: (editorMode) =>
         set({
           editorMode,
