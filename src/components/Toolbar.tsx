@@ -4,10 +4,10 @@ import {
   BarChart3,
   ChevronDown,
   Download,
-  FileJson,
   FileText,
   List,
   Maximize2,
+  MessageSquare,
   Minimize2,
   Palette,
   Pen,
@@ -21,8 +21,9 @@ import {
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { exportFile } from '../lib/converters/registry'
-import { exportAnnotatedFountain, exportAnnotationsJSON } from '../lib/export'
+import { exportAnnotatedFountain } from '../lib/export'
 import { downloadFile, openScriptFile, saveFountainFile } from '../lib/file-io'
+import { runExportNotes, runImportNotes } from '../lib/notes'
 import { openDocument, reportError } from '../lib/open-document'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
@@ -53,8 +54,10 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
     toggleEpisodeNav,
     showProofread,
     toggleProofread,
+    showNotes,
+    toggleNotes,
   } = useSettingsStore()
-  const { annotations } = useAnnotationStore()
+  const { annotations, needsPlacing } = useAnnotationStore()
   const [showExportMenu, setShowExportMenu] = useState(false)
   const exportMenuRef = useRef<HTMLDivElement>(null)
 
@@ -100,16 +103,6 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
   const handlePrintPDF = () => {
     setShowExportMenu(false)
     window.print()
-  }
-
-  const handleExportJSON = async () => {
-    if (fileName && annotations.length > 0) {
-      try {
-        await exportAnnotationsJSON(annotations, fileName)
-      } catch (error) {
-        reportError(error)
-      }
-    }
   }
 
   const handleExportFountain = async () => {
@@ -280,6 +273,62 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
               <Printer size={12} />
               Print to PDF
             </button>
+            <div style={{ height: '1px', background: 'var(--border-color)' }} />
+            <button
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px 12px',
+                textAlign: 'left',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--bg-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+              onClick={() => {
+                setShowExportMenu(false)
+                void runExportNotes().catch(reportError)
+              }}
+              type="button"
+            >
+              Export Notes…
+            </button>
+            <div style={{ height: '1px', background: 'var(--border-color)' }} />
+            <button
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px 12px',
+                textAlign: 'left',
+                background: 'transparent',
+                border: 'none',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                fontSize: 'inherit',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--bg-hover)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'transparent'
+              }}
+              onClick={() => {
+                setShowExportMenu(false)
+                void runImportNotes().catch(reportError)
+              }}
+              type="button"
+            >
+              Import Notes…
+            </button>
           </div>
         )}
       </div>
@@ -447,6 +496,45 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
         <span>Proofread</span>
       </button>
 
+      {/* Notes */}
+      <button
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px',
+          padding: '4px 10px',
+          fontSize: '11px',
+          fontWeight: showNotes ? 600 : 500,
+          background: showNotes ? 'var(--accent-cyan-dim)' : 'transparent',
+          border: showNotes ? '1px solid var(--accent-cyan)' : '1px solid transparent',
+          borderRadius: '5px',
+          color: showNotes ? 'var(--accent-cyan)' : 'var(--text-muted)',
+          cursor: 'pointer',
+          transition: 'all 0.15s ease',
+          fontFamily: "'JetBrains Mono', 'Inter', sans-serif",
+        }}
+        onClick={toggleNotes}
+        type="button"
+        title="Notes: list every note on this script (select text, Cmd/Ctrl+Shift+M to add one)"
+      >
+        <MessageSquare size={14} />
+        <span>Notes</span>
+        {annotations.length + needsPlacing.length > 0 && (
+          <span
+            style={{
+              fontSize: '9px',
+              fontWeight: 500,
+              padding: '1px 5px',
+              borderRadius: '8px',
+              background: 'var(--bg-hover)',
+              color: 'var(--text-muted)',
+            }}
+          >
+            {annotations.length + needsPlacing.length}
+          </span>
+        )}
+      </button>
+
       {/* Focus */}
       <ToolbarButton
         onClick={onToggleFocus}
@@ -473,27 +561,6 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
       {/* Annotation exports */}
       {hasAnnotations && (
         <>
-          <button
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              padding: '3px 8px',
-              fontSize: '10px',
-              fontWeight: 600,
-              background: 'var(--export-json-bg)',
-              border: '1px solid var(--export-json-border)',
-              borderRadius: '4px',
-              color: 'var(--export-json-color)',
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-            }}
-            onClick={handleExportJSON}
-            type="button"
-          >
-            <FileJson size={11} />
-            JSON
-          </button>
           <button
             style={{
               display: 'flex',

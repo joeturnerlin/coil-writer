@@ -1,355 +1,289 @@
 import { MessageSquarePlus } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
-import { addAnnotation, updateAnnotation } from '../editor/annotation-state'
-import type { AnnotationAction, AnnotationSeverity } from '../editor/types'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createNote, currentAuthor } from '../lib/notes'
+import { useAIStore } from '../store/ai-store'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
 
-interface AnnotationPopupProps {
-  selection: { from: number; to: number; text: string } | null
-  position: { x: number; y: number } | null
-  onClose: () => void
-  onAIRewrite?: () => void
+/**
+ * Note creation. A small "Note" button floats next to a non-empty selection (after mouseup / keyboard selection);
+ * Cmd/Ctrl+Shift+M (see EditorPanel) or the button opens the inline composer at the selection.
+ * Enter saves, Shift+Enter inserts a newline, Esc cancels.
+ */
+
+const BUTTON_W = 64
+const COMPOSER_W = 288
+
+interface Anchor {
+  x: number
+  y: number
 }
 
-export function AnnotationPopup({ selection, position, onClose, onAIRewrite }: AnnotationPopupProps) {
-  const { viewRef } = useEditorStore()
-  const { editingAnnotation, setEditingAnnotation } = useAnnotationStore()
+function anchorFor(view: import('@codemirror/view').EditorView, pos: number): Anchor | null {
+  const c = view.coordsAtPos(pos, -1) ?? view.coordsAtPos(pos)
+  return c ? { x: c.right, y: c.bottom } : null
+}
 
-  const [action, setAction] = useState<AnnotationAction>('rewrite')
-  const [severity, setSeverity] = useState<AnnotationSeverity | ''>('')
-  const [dimensions, setDimensions] = useState('')
-  const [comment, setComment] = useState('')
-  const [proposedText, setProposedText] = useState('')
-  const popupRef = useRef<HTMLDivElement>(null)
+export function AnnotationPopup() {
+  const viewRef = useEditorStore((s) => s.viewRef)
+  const composer = useAnnotationStore((s) => s.composer)
+  const [button, setButton] = useState<Anchor | null>(null)
+  const [text, setText] = useState('')
+  const boxRef = useRef<HTMLDivElement>(null)
+  const dragging = useRef(false)
+  // Cmd/Ctrl-release is the Analyze rewrite gesture: no note button until the next click or key
+  const rewriteGesture = useRef(false)
+  const composerOpen = composer !== null
 
-  const isEditMode = editingAnnotation !== null
+  const evaluate = useCallback(() => {
+    const view = viewRef?.current
+    if (!view || dragging.current || rewriteGesture.current || useAnnotationStore.getState().composer)
+      return setButton(null)
+    if (useAIStore.getState().rewriteSelection) return setButton(null)
+    const sel = view.state.selection.main
+    if (sel.from === sel.to) return setButton(null)
+    // Clicking a note jumps to + selects its passage: that is not a request for a new note
+    if (useAnnotationStore.getState().annotations.some((a) => a.from === sel.from && a.to === sel.to))
+      return setButton(null)
+    setButton(anchorFor(view, sel.to))
+  }, [viewRef])
 
-  // Pre-fill when editing an existing annotation
+  // Show / hide the floating button as the selection changes
   useEffect(() => {
-    if (editingAnnotation) {
-      setAction(editingAnnotation.action)
-      setSeverity(editingAnnotation.severity || '')
-      setDimensions(editingAnnotation.dimensions?.join(', ') || '')
-      setComment(editingAnnotation.comment)
-      setProposedText(editingAnnotation.proposedText || '')
-    }
-  }, [editingAnnotation])
-
-  // Close on click outside
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (popupRef.current && !popupRef.current.contains(e.target as Node)) {
-        handleClose()
-      }
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [])
-
-  // Close on Escape
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [])
-
-  const handleClose = () => {
-    setEditingAnnotation(null)
-    setAction('rewrite')
-    setSeverity('')
-    setDimensions('')
-    setComment('')
-    setProposedText('')
-    onClose()
-  }
-
-  // Determine what to show — either editing an existing annotation or creating from selection
-  const displayText = isEditMode ? editingAnnotation.selectedText : selection?.text || ''
-
-  const effectivePosition = isEditMode
-    ? (() => {
-        const view = viewRef?.current
-        if (!view || !editingAnnotation) return { x: window.innerWidth / 2 - 170, y: 200 }
-        const coords = view.coordsAtPos(editingAnnotation.to)
-        return coords ? { x: coords.left, y: coords.bottom } : { x: window.innerWidth / 2 - 170, y: 200 }
-      })()
-    : position
-
-  if (!isEditMode && (!selection || !position)) return null
-  if (!effectivePosition) return null
-
-  const handleSave = () => {
     const view = viewRef?.current
     if (!view) return
-
-    const parsedDimensions = dimensions
-      .split(',')
-      .map((d) => d.trim())
-      .filter(Boolean)
-
-    if (isEditMode && editingAnnotation) {
-      // Update existing annotation
-      view.dispatch({
-        effects: updateAnnotation.of({
-          id: editingAnnotation.id,
-          changes: {
-            action,
-            severity: severity || undefined,
-            dimensions: parsedDimensions.length > 0 ? parsedDimensions : undefined,
-            comment,
-            proposedText: proposedText || undefined,
-          },
-        }),
-      })
-    } else if (selection) {
-      // Create new annotation
-      view.dispatch({
-        effects: addAnnotation.of({
-          id: `ann_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-          from: selection.from,
-          to: selection.to,
-          selectedText: selection.text,
-          action,
-          severity: severity || undefined,
-          dimensions: parsedDimensions.length > 0 ? parsedDimensions : undefined,
-          comment,
-          proposedText: proposedText || undefined,
-          createdAt: new Date().toISOString(),
-        }),
-      })
+    const onDown = () => {
+      rewriteGesture.current = false
+      dragging.current = true
+      setButton(null)
     }
+    const onUp = (e: MouseEvent) => {
+      if (!dragging.current) return
+      dragging.current = false
+      // Cmd/Ctrl-release is the Analyze rewrite gesture — not a note gesture
+      if (e.metaKey || e.ctrlKey) {
+        rewriteGesture.current = true
+        return setButton(null)
+      }
+      requestAnimationFrame(evaluate)
+    }
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.shiftKey || e.key === 'Shift' || e.key.startsWith('Arrow') || e.key === 'Escape') {
+        rewriteGesture.current = false
+        requestAnimationFrame(evaluate)
+      }
+    }
+    const onSelectionChange = () => {
+      if (!dragging.current) requestAnimationFrame(evaluate)
+    }
+    view.dom.addEventListener('mousedown', onDown)
+    window.addEventListener('mouseup', onUp)
+    view.dom.addEventListener('keyup', onKeyUp)
+    view.scrollDOM.addEventListener('scroll', evaluate, { passive: true })
+    document.addEventListener('selectionchange', onSelectionChange)
+    // Panels opening/closing move the text: keep the button on the selection
+    const ro = new ResizeObserver(() => evaluate())
+    ro.observe(view.dom)
+    return () => {
+      ro.disconnect()
+      view.dom.removeEventListener('mousedown', onDown)
+      window.removeEventListener('mouseup', onUp)
+      view.dom.removeEventListener('keyup', onKeyUp)
+      view.scrollDOM.removeEventListener('scroll', evaluate)
+      document.removeEventListener('selectionchange', onSelectionChange)
+    }
+  }, [viewRef, evaluate])
 
-    handleClose()
-  }
+  // The composer renders in the same pass that opens it (so the first keystrokes after the shortcut land in it)
+  const composerPos = useMemo(() => {
+    const view = viewRef?.current
+    return composer && view ? anchorFor(view, composer.to) : null
+  }, [composer, viewRef])
+  useEffect(() => {
+    if (!composer) return
+    setButton(null)
+  }, [composer])
 
-  const truncatedText = displayText.length > 100 ? `${displayText.slice(0, 100)}...` : displayText
+  const close = useCallback(() => {
+    setText('')
+    useAnnotationStore.getState().setComposer(null)
+    viewRef?.current?.focus()
+  }, [viewRef])
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%',
-    fontSize: '11px',
-    fontFamily: "'Inter', sans-serif",
-    padding: '8px 12px',
-    borderRadius: 'var(--card-radius)',
-    background: 'var(--bg-primary)',
-    border: '1px solid var(--border-color)',
-    color: 'var(--text-primary)',
-  }
+  const save = useCallback(() => {
+    const view = viewRef?.current
+    const c = useAnnotationStore.getState().composer
+    if (!view || !c) return
+    const note = createNote(view, c.from, c.to, text)
+    if (!note) return
+    setText('')
+    useAnnotationStore.getState().setComposer(null)
+    useAnnotationStore.getState().setSelectedId(note.id)
+    view.dispatch({ selection: { anchor: c.to } })
+    view.focus()
+  }, [viewRef, text])
 
-  const actionBtnStyle = (isActive: boolean): React.CSSProperties => ({
-    flex: 1,
-    padding: '6px 8px',
-    fontSize: '10px',
-    fontFamily: "'JetBrains Mono', monospace",
-    fontWeight: 600,
-    textTransform: 'uppercase',
-    letterSpacing: '0.03em',
-    borderRadius: 'var(--btn-radius)',
-    cursor: 'pointer',
-    transition: 'all 0.15s ease',
-    background: isActive ? 'var(--accent-blue)' : 'var(--bg-hover)',
-    color: isActive ? 'var(--accent-blue-text)' : 'var(--text-muted)',
-    border: `1px solid ${isActive ? 'var(--accent-blue)' : 'var(--border-color)'}`,
-  })
+  const openFromSelection = useCallback(() => {
+    const view = viewRef?.current
+    if (!view) return
+    const sel = view.state.selection.main
+    if (sel.from === sel.to) return
+    useAnnotationStore.getState().setComposer({
+      from: sel.from,
+      to: sel.to,
+      text: view.state.doc.sliceString(sel.from, sel.to),
+    })
+  }, [viewRef])
 
-  return (
-    <div
-      ref={popupRef}
-      style={{
-        position: 'fixed',
-        zIndex: 50,
-        width: '360px',
-        left: Math.min(effectivePosition.x, window.innerWidth - 380),
-        top: Math.min(effectivePosition.y + 10, window.innerHeight - 500),
-        background: 'var(--bg-tertiary)',
-        border: '1px solid var(--border-light)',
-        borderRadius: 'var(--card-radius)',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.4)',
-        overflow: 'hidden',
-      }}
-    >
-      {/* Header */}
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
+  // Cmd/Ctrl+Shift+M — no CodeMirror binding uses it (the default keymap has Ctrl-m / Shift-Alt-m only)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || !e.shiftKey || e.altKey || e.key.toLowerCase() !== 'm') return
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'TEXTAREA' || t.tagName === 'INPUT')) return
+      e.preventDefault()
+      openFromSelection()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [openFromSelection])
+
+  // Click outside the composer cancels it
+  useEffect(() => {
+    if (!composerOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (boxRef.current && !boxRef.current.contains(e.target as Node)) close()
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [composerOpen, close])
+
+  const clampX = (x: number, w: number) => Math.max(8, Math.min(x, window.innerWidth - w - 8))
+
+  if (composer && composerPos) {
+    const quote = composer.text.length > 80 ? `${composer.text.slice(0, 80)}…` : composer.text
+    const below = composerPos.y + 8
+    const top = below + 150 > window.innerHeight ? Math.max(8, composerPos.y - 158) : below
+    return (
+      <div
+        ref={boxRef}
+        data-note-composer
+        style={{
+          position: 'fixed',
+          left: clampX(composerPos.x - COMPOSER_W / 2, COMPOSER_W),
+          top,
+          width: COMPOSER_W,
+          zIndex: 45,
+          padding: '10px 12px',
+          background: 'var(--bg-tertiary)',
+          border: '1px solid var(--accent-cyan)',
+          borderRadius: 'var(--card-radius)',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        }}
+      >
         <div
           style={{
+            display: 'flex',
+            justifyContent: 'space-between',
             fontSize: '10px',
             fontFamily: "'JetBrains Mono', monospace",
-            fontWeight: 600,
+            fontWeight: 700,
             textTransform: 'uppercase',
-            letterSpacing: '0.05em',
+            letterSpacing: '0.15em',
             color: 'var(--text-muted)',
             marginBottom: '6px',
           }}
         >
-          {isEditMode ? 'Edit annotation' : 'Selected text'}
+          <span>Note</span>
+          <span style={{ fontWeight: 500, letterSpacing: '0.05em' }}>{currentAuthor()}</span>
         </div>
         <div
           style={{
             fontSize: '11px',
-            color: 'var(--text-primary)',
-            fontFamily: "'Courier Prime', monospace",
-            lineHeight: '1.5',
+            fontFamily: "'Inter', sans-serif",
+            color: 'var(--text-dim)',
+            marginBottom: '6px',
+            overflow: 'hidden',
+            whiteSpace: 'nowrap',
+            textOverflow: 'ellipsis',
           }}
         >
-          &ldquo;{truncatedText}&rdquo;
+          “{quote.replace(/\s+/g, ' ')}”
         </div>
-      </div>
-
-      {/* AI Rewrite + Action selector */}
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
-        {onAIRewrite && !isEditMode && (
-          <button
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px',
-              padding: '8px 12px',
-              marginBottom: '14px',
-              fontSize: '11px',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 600,
-              borderRadius: 'var(--card-radius)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              background: 'var(--accent-blue)',
-              color: 'var(--accent-blue-text)',
-              border: '1px solid var(--accent-blue)',
-            }}
-            onClick={() => {
-              onAIRewrite()
-              handleClose()
-            }}
-            type="button"
-          >
-            <MessageSquarePlus size={14} />
-            Rewrite with AI
-          </button>
-        )}
-
-        <div
-          style={{
-            fontSize: '10px',
-            fontFamily: "'JetBrains Mono', monospace",
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            color: 'var(--text-muted)',
-            marginBottom: '8px',
-          }}
-        >
-          {isEditMode ? 'Action' : 'Or annotate'}
-        </div>
-
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {(['rewrite', 'delete', 'move', 'flag'] as AnnotationAction[]).map((a) => (
-            <button key={a} style={actionBtnStyle(action === a)} onClick={() => setAction(a)} type="button">
-              {a}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Severity selector */}
-      <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--border-color)' }}>
-        <div
-          style={{
-            fontSize: '10px',
-            fontFamily: "'JetBrains Mono', monospace",
-            fontWeight: 600,
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            color: 'var(--text-muted)',
-            marginBottom: '8px',
-          }}
-        >
-          Severity (optional)
-        </div>
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {(['', 'P1', 'P2', 'P3'] as const).map((s) => (
-            <button
-              key={s || 'none'}
-              style={actionBtnStyle(severity === s)}
-              onClick={() => setSeverity(s)}
-              type="button"
-            >
-              {s || 'None'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Dimensions + Comment + Proposed */}
-      <div style={{ padding: '14px 16px' }}>
-        {action !== 'delete' && (
-          <textarea
-            style={{ ...inputStyle, marginBottom: '8px', resize: 'none' }}
-            rows={2}
-            placeholder={
-              action === 'move'
-                ? 'Move where?'
-                : action === 'flag'
-                  ? 'What do you want to flag?'
-                  : 'What should change?'
+        <textarea
+          // biome-ignore lint/a11y/noAutofocus: the composer exists to be typed into the moment it opens
+          autoFocus
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            e.stopPropagation()
+            if (e.key === 'Escape') {
+              e.preventDefault()
+              close()
+            } else if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              save()
             }
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-          />
-        )}
-
-        {action === 'rewrite' && (
-          <textarea
-            style={{ ...inputStyle, marginBottom: '8px', resize: 'none', fontFamily: "'Courier Prime', monospace" }}
-            rows={2}
-            placeholder="Proposed replacement text (optional)"
-            value={proposedText}
-            onChange={(e) => setProposedText(e.target.value)}
-          />
-        )}
-
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button
-            style={{
-              flex: 1,
-              padding: '8px 12px',
-              fontSize: '11px',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 600,
-              borderRadius: 'var(--card-radius)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              background: 'var(--accent-cyan)',
-              color: '#0a0a0f',
-              border: 'none',
-            }}
-            onClick={handleSave}
-            type="button"
-          >
-            {isEditMode ? 'Update Annotation' : 'Save Annotation'}
-          </button>
-          <button
-            style={{
-              padding: '8px 12px',
-              fontSize: '11px',
-              fontFamily: "'JetBrains Mono', monospace",
-              fontWeight: 500,
-              borderRadius: 'var(--card-radius)',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              background: 'var(--bg-hover)',
-              border: '1px solid var(--border-light)',
-              color: 'var(--text-primary)',
-            }}
-            onClick={handleClose}
-            type="button"
-          >
-            Cancel
-          </button>
+          }}
+          rows={3}
+          placeholder="Type a note"
+          style={{
+            width: '100%',
+            resize: 'none',
+            fontSize: '12px',
+            fontFamily: "'Inter', sans-serif",
+            lineHeight: 1.5,
+            padding: '6px 8px',
+            background: 'var(--bg-primary)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--btn-radius)',
+            color: 'var(--text-primary)',
+            outline: 'none',
+          }}
+        />
+        <div
+          style={{
+            marginTop: '6px',
+            fontSize: '9px',
+            fontFamily: "'JetBrains Mono', monospace",
+            color: 'var(--text-dim)',
+          }}
+        >
+          Enter saves · Shift+Enter newline · Esc cancels
         </div>
       </div>
-    </div>
+    )
+  }
+
+  if (!button) return null
+  return (
+    <button
+      type="button"
+      // Keep the editor selection: the button must not take focus
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={openFromSelection}
+      title="Add a note to the selection (Cmd/Ctrl+Shift+M)"
+      style={{
+        position: 'fixed',
+        left: clampX(button.x + 8, BUTTON_W),
+        top: button.y + 4,
+        zIndex: 40,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+        padding: '4px 10px',
+        fontSize: '11px',
+        fontWeight: 600,
+        fontFamily: "'JetBrains Mono', 'Inter', sans-serif",
+        background: 'var(--accent-cyan-dim)',
+        border: '1px solid var(--accent-cyan)',
+        borderRadius: '5px',
+        color: 'var(--accent-cyan)',
+        cursor: 'pointer',
+      }}
+    >
+      <MessageSquarePlus size={12} />
+      Note
+    </button>
   )
 }

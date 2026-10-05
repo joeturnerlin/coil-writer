@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import type { AIProvider } from '../lib/ai-provider'
 import { OPTIONAL_GOOGLE_MODEL, selectableModels } from '../lib/models'
 import { useAIStore } from '../store/ai-store'
+import { useSettingsStore } from '../store/settings-store'
 import { AppearanceSettings } from './AppearanceSettings'
 
 interface SettingsDialogProps {
@@ -27,6 +28,8 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     setComparisonModels,
   } = useAIStore()
   const [showKey, setShowKey] = useState(false)
+  const authorName = useSettingsStore((s) => s.authorName)
+  const setAuthorName = useSettingsStore((s) => s.setAuthorName)
 
   useEffect(() => {
     if (!open) return
@@ -141,6 +144,21 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         </div>
 
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Author */}
+          <div>
+            <label htmlFor="note-author" style={labelStyle}>
+              Your name (on notes)
+            </label>
+            <input
+              id="note-author"
+              style={inputStyle}
+              value={authorName}
+              placeholder="Me"
+              onChange={(e) => setAuthorName(e.target.value)}
+              onBlur={() => !authorName.trim() && setAuthorName('Me')}
+            />
+          </div>
+
           {/* Provider */}
           <div>
             <label htmlFor="ai-provider" style={labelStyle}>

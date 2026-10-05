@@ -30,6 +30,10 @@ interface SettingsState {
   editorMode: EditorMode
   showAnnotations: boolean
   showProofread: boolean
+  /** Right-column Notes inspector (one right panel at a time with Proofread). */
+  showNotes: boolean
+  /** Name stamped on notes you create. */
+  authorName: string
 
   // New fields
   activeOverlay: ActiveOverlay
@@ -52,6 +56,8 @@ interface SettingsState {
   setEditorMode: (mode: EditorMode) => void
   toggleAnnotations: () => void
   toggleProofread: () => void
+  toggleNotes: () => void
+  setAuthorName: (name: string) => void
 
   setActiveOverlay: (overlay: ActiveOverlay) => void
   setStructureFramework: (fw: StructureFramework) => void
@@ -115,6 +121,8 @@ export const useSettingsStore = create<SettingsState>()(
       editorMode: 'write' as EditorMode,
       showAnnotations: false,
       showProofread: false,
+      showNotes: false,
+      authorName: 'Me',
 
       activeOverlay: 'none' as ActiveOverlay,
       structureFramework: 'save-the-cat' as StructureFramework,
@@ -177,7 +185,12 @@ export const useSettingsStore = create<SettingsState>()(
           showAnnotations: editorMode === 'analyze',
         }),
       toggleAnnotations: () => set((s) => ({ showAnnotations: !s.showAnnotations })),
-      toggleProofread: () => set((s) => ({ showProofread: !s.showProofread })),
+      // The last panel opened wins the right column
+      toggleProofread: () =>
+        set((s) => ({ showProofread: !s.showProofread, showNotes: s.showProofread ? s.showNotes : false })),
+      toggleNotes: () =>
+        set((s) => ({ showNotes: !s.showNotes, showProofread: s.showNotes ? s.showProofread : false })),
+      setAuthorName: (authorName) => set({ authorName }),
 
       setActiveOverlay: (activeOverlay) => set({ activeOverlay }),
       setStructureFramework: (structureFramework) => set({ structureFramework }),

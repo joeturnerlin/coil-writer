@@ -288,6 +288,11 @@ body.light ::-webkit-scrollbar-thumb:hover {
     text-transform: uppercase !important;
   }
 
+  /* Notes are review marks: never printed */
+  .margin-notes {
+    display: none !important;
+  }
+
   /* Remove annotation highlights in print */
   .cm-annotation-mark {
     background: none !important;

@@ -27,6 +27,7 @@ export function App() {
     showEpisodeNav,
     showAnnotations,
     showProofread,
+    showNotes,
     editorMode,
     onboardingComplete,
     setOnboardingComplete,
@@ -127,7 +128,7 @@ export function App() {
         </div>
 
         {/* Right panel — contextual by mode */}
-        {!focusMode && hasDocument && (editorMode === 'analyze' || showAnnotations || showProofread) && (
+        {!focusMode && hasDocument && (editorMode === 'analyze' || showAnnotations || showProofread || showNotes) && (
           <ContextualRightPanel />
         )}
       </div>
