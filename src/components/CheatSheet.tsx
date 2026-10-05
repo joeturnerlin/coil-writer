@@ -186,7 +186,7 @@ function CheatSheetPanel({ onClose }: { onClose: () => void }) {
         </Section>
 
         <Section title="AI Rewrite">
-          <Desc text="Switch to Annotate mode (Cmd+E), select text, and click 'Rewrite with AI' to get an AI-suggested rewrite of the selected passage." />
+          <Desc text="Switch to Annotate mode (Cmd+E), select 20+ characters, then Cmd/Ctrl+Enter (or release the mouse with Cmd/Ctrl held) to get an AI-suggested rewrite of the selected passage." />
           <Desc text="The AI sees ~500 characters of surrounding context to maintain voice and continuity." />
           <Desc text="You can also manually annotate text with rewrite, delete, move, or flag actions for revision notes." />
         </Section>

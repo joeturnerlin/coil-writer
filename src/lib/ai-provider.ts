@@ -8,6 +8,7 @@
  * Desktop production requests use the same handlers in Electron main.
  */
 
+import { escapeRegex } from './regex'
 import type { VoiceProfile } from './voice-profile'
 import { buildCompactProfile, shouldInjectProfile } from './voice-profile'
 
@@ -80,7 +81,7 @@ Respond in this exact JSON format:
   // Find active characters for forbidden pattern injection
   const combinedText = `${selectedText} ${context}`
   const activeChars = profile.characters.filter((c) => {
-    const regex = new RegExp(`\\b${c.name}\\b`, 'i')
+    const regex = new RegExp(`\\b${escapeRegex(c.name)}\\b`, 'i')
     return regex.test(combinedText)
   })
 

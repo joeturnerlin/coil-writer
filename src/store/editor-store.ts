@@ -44,6 +44,8 @@ export const useEditorStore = create<EditorState>((set) => ({
       fileName: name,
       content,
       cursorLine: 1,
+      importWarnings: [],
+      importFormat: null,
     })),
 
   setStats: (stats) => set({ stats }),

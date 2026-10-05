@@ -1,5 +1,5 @@
 import { Eye, EyeOff, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { AIProvider } from '../lib/ai-provider'
 import { OPTIONAL_GOOGLE_MODEL, selectableModels } from '../lib/models'
 import { useAIStore } from '../store/ai-store'
@@ -26,6 +26,15 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
     setComparisonModels,
   } = useAIStore()
   const [showKey, setShowKey] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
   if (!open) return null
 
@@ -55,7 +64,15 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   }
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: <dialog> default styles would change the pixel-identical overlay
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click is a mouse convenience; Escape is handled by the window listener above
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
       style={{
         position: 'fixed',
         inset: 0,

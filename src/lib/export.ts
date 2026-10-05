@@ -1,9 +1,10 @@
 import type { Annotation } from '../editor/types'
+import { downloadFile } from './file-io'
 
 /**
  * Export annotations as a JSON file download.
  */
-export function exportAnnotationsJSON(annotations: Annotation[], fileName: string) {
+export async function exportAnnotationsJSON(annotations: Annotation[], fileName: string) {
   const data = {
     source: fileName,
     exportedAt: new Date().toISOString(),
@@ -23,19 +24,14 @@ export function exportAnnotationsJSON(annotations: Annotation[], fileName: strin
   }
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${fileName.replace(/\.fountain$/i, '')}-annotations.json`
-  a.click()
-  URL.revokeObjectURL(url)
+  await downloadFile(blob, `${fileName.replace(/\.fountain$/i, '')}-annotations.json`)
 }
 
 /**
  * Export Fountain file with inline annotation comments inserted at annotated positions.
  * Annotations are inserted as Fountain notes: [ACTION/SEVERITY] comment
  */
-export function exportAnnotatedFountain(content: string, annotations: Annotation[], fileName: string) {
+export async function exportAnnotatedFountain(content: string, annotations: Annotation[], fileName: string) {
   // Sort annotations by position (descending) so insertions don't shift positions
   const sorted = [...annotations].sort((a, b) => b.to - a.to)
 
@@ -50,10 +46,5 @@ export function exportAnnotatedFountain(content: string, annotations: Annotation
   }
 
   const blob = new Blob([annotated], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `${fileName.replace(/\.fountain$/i, '')}-annotated.fountain`
-  a.click()
-  URL.revokeObjectURL(url)
+  await downloadFile(blob, `${fileName.replace(/\.fountain$/i, '')}-annotated.fountain`)
 }

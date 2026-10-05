@@ -14,6 +14,15 @@ export function requestAnthropic(
   })
 }
 
+interface AnthropicContent { content?: Array<{ type?: string; text?: string }> }
+
+/** Text of an Anthropic Messages response, skipping non-text blocks (e.g. thinking).
+ *  `joinAll` joins every text block (analysis); otherwise only the first (proxy routes, one JSON answer). */
+export function extractAnthropicText(data: AnthropicContent, joinAll = false): string {
+  const texts = (data.content ?? []).filter((block) => block.text).map((block) => block.text as string)
+  return joinAll ? texts.join('\n') : (texts[0] ?? '')
+}
+
 export async function proxyAnthropic(
   system: string,
   user: string,
@@ -36,7 +45,13 @@ export async function proxyAnthropic(
     )
   }
 
-  const text = data.content?.[0]?.text
+  const text = extractAnthropicText(data)
+  if (!text) {
+    return new Response(JSON.stringify({ error: 'Empty response from Anthropic' }), {
+      status: 502,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
   return new Response(JSON.stringify({ text }), {
     headers: { 'Content-Type': 'application/json' },
   })

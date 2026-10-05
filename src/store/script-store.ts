@@ -43,7 +43,12 @@ export const useScriptStore = create<ScriptState>((set, get) => ({
 
   updateFromContent: (content: string) => {
     const key = quickHash(content)
-    if (key === get().contentKey) return
+    if (key === get().contentKey) {
+      // Content reverted to the parsed state: cancel any pending parse of the intermediate edit
+      if (debounceTimer) clearTimeout(debounceTimer)
+      set({ parsing: false })
+      return
+    }
 
     set({ parsing: true })
 

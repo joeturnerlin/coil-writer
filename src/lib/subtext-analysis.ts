@@ -10,6 +10,7 @@
  */
 
 import { dispatchAI } from './ai-dispatch'
+import { parseJsonLoose } from './json-parse'
 import type { SceneBlock } from './scene-model'
 
 export type SubtextCategory = 'literal-emotion' | 'exposition-dump' | 'thematic-broadcasting'
@@ -62,7 +63,7 @@ export async function analyzeSubtext(scene: SceneBlock, signal?: AbortSignal): P
     signal,
   })
 
-  const parsed = JSON.parse(result.text)
+  const parsed = parseJsonLoose<{ flags?: unknown }>(result.text, 'subtext analysis')
   const rawFlags: unknown[] = Array.isArray(parsed.flags) ? parsed.flags : []
 
   // Validate and normalize each flag

@@ -27,13 +27,22 @@ export interface AIDispatchResult {
   usageRemaining?: number
 }
 
+/** Error carrying the HTTP status of a failed provider/proxy call so retry can key on it. */
+export class AIHttpError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
 export async function dispatchAI(options: AIDispatchOptions): Promise<AIDispatchResult> {
   try {
     return await dispatchOnce(options)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : ''
-    if (/429|5\d\d/.test(msg)) {
-      const delay = /429/.test(msg) ? 3000 : 1000
+    const status = err instanceof AIHttpError ? err.status : 0
+    if (status === 429 || status >= 500) {
+      const delay = status === 429 ? 3000 : 1000
       await new Promise((r) => setTimeout(r, delay))
       return dispatchOnce(options)
     }
@@ -83,7 +92,7 @@ async function callProxy(
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`AI proxy error (${options.task}): ${res.status} ${err}`)
+    throw new AIHttpError(`AI proxy error (${options.task}): ${res.status} ${err}`, res.status)
   }
 
   const data = await res.json()
@@ -121,7 +130,7 @@ async function callGeminiDirect(options: AIDispatchOptions, model: string, apiKe
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Gemini ${options.task} error ${res.status}: ${err}`)
+    throw new AIHttpError(`Gemini ${options.task} error ${res.status}: ${err}`, res.status)
   }
 
   const data = await res.json()

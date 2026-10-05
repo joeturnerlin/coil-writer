@@ -1,5 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron'
-import type { IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
+import type { IpcMainEvent, IpcMainInvokeEvent, MenuItemConstructorOptions } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { basename, extname, join, resolve, sep } from 'node:path'
@@ -38,9 +38,12 @@ function report(error: unknown) {
 function external(url: string) {
   if (/^https?:\/\//.test(url)) void shell.openExternal(url).catch(report)
 }
+function isTrusted(event: IpcMainEvent | IpcMainInvokeEvent) {
+  return Boolean(window && event.sender === window.webContents && event.senderFrame && event.senderFrame === window.webContents.mainFrame &&
+    event.senderFrame.url.startsWith(`${origin}/`))
+}
 function trusted(event: IpcMainInvokeEvent) {
-  if (!window || event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame ||
-      !event.senderFrame.url.startsWith(`${origin}/`)) throw new Error('Untrusted document request')
+  if (!isTrusted(event)) throw new Error('Untrusted document request')
 }
 async function readDocument(filePath: string) {
   if (!filters[0].extensions.includes(extname(filePath).slice(1).toLowerCase())) throw new Error('Unsupported screenplay format')
@@ -57,6 +60,7 @@ function openFiles(files: string[]) {
       const filePath = pendingFiles.shift()!
       try {
         const file = await readDocument(filePath)
+        if (!window || !ready) { pendingFiles.unshift(filePath); break }
         window.webContents.send('coil:opened', file)
         window.show()
       } catch (error) { report(error) }
@@ -116,7 +120,8 @@ async function createWindow() {
   current.on('close', () => {
     const state = { ...current.getNormalBounds(), maximized: current.isMaximized() }
     // Synchronous write at close ensures Quit cannot exit before state reaches disk.
-    require('node:fs').writeFileSync(join(app.getPath('userData'), 'window.json'), JSON.stringify(state))
+    try { require('node:fs').writeFileSync(join(app.getPath('userData'), 'window.json'), JSON.stringify(state)) }
+    catch (error) { console.error('Cannot save window state:', error) }
   })
   current.on('closed', () => { window = null; ready = false; documents.clear() })
   await current.loadURL(`${origin}/`)
@@ -170,10 +175,11 @@ if (ownsInstance) void app.whenReady().then(async () => {
     }
     await writeFile(target, Buffer.from(input.data))
     const documentId = input.mode === 'save' && input.documentId ? input.documentId : randomUUID()
+    if (input.mode === 'saveAs' && input.documentId) documents.delete(input.documentId)
     if (input.mode !== 'export') documents.set(documentId, target)
     return { name: basename(target), documentId }
   })
-  ipcMain.on('coil:ready', (event) => { trusted(event); ready = true; openFiles([]); flushCommands() })
+  ipcMain.on('coil:ready', (event) => { if (!isTrusted(event)) return; ready = true; openFiles([]); flushCommands() })
   const command = (action: string) => {
     if (!window && action !== 'open') return
     pendingCommands.push(action)

@@ -162,23 +162,51 @@ export function AnalysisPanel() {
   )
 }
 
+/** Give up on a hung analysis request after this long. */
+const ANALYSIS_TIMEOUT_MS = 180_000
+
 /**
  * Hook to trigger analysis from other components.
  */
 export function useAnalysis() {
   const { content } = useEditorStore()
+  const documentVersion = useEditorStore((s) => s.documentVersion)
   const { setAnalysisState, setCurrentProfile } = useAIStore()
+  const abortRef = useRef<AbortController | null>(null)
+
+  // A different document invalidates any in-flight analysis
+  useEffect(() => {
+    return () => {
+      if (abortRef.current) {
+        abortRef.current.abort()
+        abortRef.current = null
+        setAnalysisState({ status: 'idle' })
+      }
+    }
+  }, [documentVersion, setAnalysisState])
 
   return useCallback(async () => {
     if (!content) return
 
+    abortRef.current?.abort()
     const abortController = new AbortController()
+    abortRef.current = abortController
+    const startVersion = useEditorStore.getState().documentVersion
+    const isCurrent = () =>
+      abortRef.current === abortController && useEditorStore.getState().documentVersion === startVersion
+    let timedOut = false
+    const timeout = setTimeout(() => {
+      timedOut = true
+      abortController.abort()
+    }, ANALYSIS_TIMEOUT_MS)
     setAnalysisState({ status: 'analyzing', startedAt: Date.now() })
 
     try {
       const profile = await analyzeScriptViaProxy(content, abortController.signal)
+      if (!isCurrent()) return
 
       const hash = await hashScript(content)
+      if (!isCurrent()) return
       setCurrentProfile(profile, hash)
       useCharacterStore.getState().setBaseProfiles(profile.characters)
       setAnalysisState({
@@ -187,10 +215,19 @@ export function useAnalysis() {
         profile,
       })
     } catch (err) {
+      // Superseded by a newer run or a document change: the newer owner sets state
+      if (!isCurrent()) return
+      if (timedOut) {
+        setAnalysisState({ status: 'error', message: 'Analysis timed out. Please try again.' })
+        return
+      }
       setAnalysisState({
         status: 'error',
         message: err instanceof Error ? err.message : 'Analysis failed',
       })
+    } finally {
+      clearTimeout(timeout)
+      if (abortRef.current === abortController) abortRef.current = null
     }
   }, [content, setAnalysisState, setCurrentProfile])
 }

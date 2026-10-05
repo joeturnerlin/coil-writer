@@ -6,6 +6,8 @@
  * Used to inject voice context into AI rewrite calls.
  */
 
+import { escapeRegex } from './regex'
+
 // ── Schema Types ──
 
 export interface EvidencedPattern {
@@ -71,7 +73,7 @@ export function buildCompactProfile(
     ? profile.characters.map((c) => (overrides[c.name] ? ({ ...c, ...overrides[c.name] } as CharacterProfile) : c))
     : profile.characters
   const activeCharacters = characters.filter((c) => {
-    const regex = new RegExp(`\\b${c.name}\\b`, 'i')
+    const regex = new RegExp(`\\b${escapeRegex(c.name)}\\b`, 'i')
     return regex.test(combinedText)
   })
 

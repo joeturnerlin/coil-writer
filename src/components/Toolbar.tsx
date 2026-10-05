@@ -17,9 +17,10 @@ import {
   ZoomOut,
 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { exportFile, importFile } from '../lib/converters/registry'
+import { exportFile } from '../lib/converters/registry'
 import { exportAnnotatedFountain, exportAnnotationsJSON } from '../lib/export'
 import { downloadFile, openScriptFile, saveFountainFile } from '../lib/file-io'
+import { openDocument, reportError } from '../lib/open-document'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
 import { useSettingsStore } from '../store/settings-store'
@@ -64,27 +65,29 @@ export function Toolbar({ onToggleFocus, onOpenSettings, focusMode }: ToolbarPro
 
   const handleOpen = async () => {
     const file = await openScriptFile()
-    if (file) {
-      const result = await importFile(file.name, file.data)
-      useEditorStore.getState().openFile(file.name, result.content, file.documentId)
-      if (result.warnings.length > 0) {
-        useEditorStore.getState().setImportWarnings(result.warnings, result.format)
-      }
-    }
+    if (file) await openDocument(file)
   }
 
-  const handleSaveFountain = () => {
+  const handleSaveFountain = async () => {
     if (fileName && content) {
-      saveFountainFile(fileName, content)
+      try {
+        await saveFountainFile(fileName, content)
+      } catch (error) {
+        reportError(error)
+      }
     }
   }
 
   const handleExportFDX = async () => {
     if (!fileName || !content) return
     setShowExportMenu(false)
-    const result = await exportFile(content, 'fdx', fileName)
-    const name = fileName.replace(/\.[^.]+$/, '') + result.extension
-    downloadFile(result.data, name)
+    try {
+      const result = await exportFile(content, 'fdx', fileName)
+      const name = fileName.replace(/\.[^.]+$/, '') + result.extension
+      await downloadFile(result.data, name)
+    } catch (error) {
+      reportError(error)
+    }
   }
 
   const handlePrintPDF = () => {

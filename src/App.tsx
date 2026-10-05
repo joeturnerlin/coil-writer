@@ -54,26 +54,26 @@ export function App() {
   // Keyboard shortcuts: focus mode + zoom
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.metaKey && e.shiftKey && e.key === 'f') {
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         setFocusMode((prev) => !prev)
       }
       if (e.key === 'Escape') {
         setFocusMode(false)
       }
-      if (e.metaKey && (e.key === '=' || e.key === '+')) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === '=' || e.key === '+')) {
         e.preventDefault()
         useSettingsStore.getState().zoomIn()
       }
-      if (e.metaKey && e.key === '-') {
+      if ((e.metaKey || e.ctrlKey) && e.key === '-') {
         e.preventDefault()
         useSettingsStore.getState().zoomOut()
       }
-      if (e.metaKey && e.key === '0') {
+      if ((e.metaKey || e.ctrlKey) && e.key === '0') {
         e.preventDefault()
         useSettingsStore.getState().resetZoom()
       }
-      if (e.metaKey && e.key === 'e') {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'e') {
         e.preventDefault()
         const current = useSettingsStore.getState().editorMode
         useSettingsStore.getState().setEditorMode(current === 'write' ? 'analyze' : 'write')

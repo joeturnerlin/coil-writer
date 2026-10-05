@@ -95,19 +95,23 @@ db.version(4).stores({
  * Uses fileName as the logical key (upsert by fileName).
  */
 export async function saveToDB(fileName: string, content: string): Promise<void> {
-  const existing = await db.documents.where('fileName').equals(fileName).first()
-  if (existing?.id !== undefined) {
-    await db.documents.update(existing.id, {
-      content,
-      lastModified: Date.now(),
-    })
-  } else {
-    await db.documents.add({
-      fileName,
-      content,
-      lastModified: Date.now(),
-    })
-  }
+  // One rw transaction so concurrent saves can't both see "no row" and each add one.
+  // Known limitation: fileName is the key, so two different files with the same name share one record.
+  await db.transaction('rw', db.documents, async () => {
+    const existing = await db.documents.where('fileName').equals(fileName).first()
+    if (existing?.id !== undefined) {
+      await db.documents.update(existing.id, {
+        content,
+        lastModified: Date.now(),
+      })
+    } else {
+      await db.documents.add({
+        fileName,
+        content,
+        lastModified: Date.now(),
+      })
+    }
+  })
 }
 
 /**

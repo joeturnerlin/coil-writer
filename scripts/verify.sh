@@ -12,7 +12,7 @@ npm run build
 npm run package:mac
 npm run test:desktop
 printf '\nModel ID audit:\n'
-grep -rn 'gemini-\|claude-\|gpt-' src api --include='*.ts' --include='*.tsx' | tee "$run/model-ids.txt"
+grep -rn 'gemini-\|claude-\|gpt-' src api desktop --include='*.ts' --include='*.tsx' | tee "$run/model-ids.txt"
 if grep -vE '^src/lib/models.ts:|\.(test|spec)\.tsx?:' "$run/model-ids.txt"; then
   printf 'Model IDs escaped the SSOT\n' >&2
   exit 1

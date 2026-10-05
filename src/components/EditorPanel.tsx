@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { annotationField } from '../editor/annotation-state'
 import { createEditorExtensions, subtextCompartment, themeCompartment } from '../editor/editor-setup'
 import { fountainDarkTheme, fountainLightTheme } from '../editor/fountain-theme'
+import { buildRewriteSelection } from '../editor/rewrite-selection'
 import { subtextExtension } from '../editor/subtext-decorations'
 import { useCodeMirror } from '../editor/use-codemirror'
 import { saveToDB } from '../lib/persistence'
@@ -28,9 +29,48 @@ export function EditorPanel(_props: EditorPanelProps) {
   // Track previous fileName to detect when a new file is opened
   const prevDocumentVersionRef = useRef(documentVersion)
 
+  // Latest doc awaiting the debounced autosave (null = nothing pending)
+  const pendingSaveRef = useRef<string | null>(null)
+
+  const flushSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = null
+    const pending = pendingSaveRef.current
+    pendingSaveRef.current = null
+    if (pending === null) return
+    // Read fileName from store directly — same stale closure issue
+    const currentFileName = useEditorStore.getState().fileName
+    if (currentFileName) {
+      saveToDB(currentFileName, pending)
+    }
+  }, [])
+
   const onUpdate = useCallback(
-    ({ doc, cursorLine, selection }: { doc: string; cursorLine: number; selection: { from: number; to: number } }) => {
+    ({
+      doc,
+      annotationsChanged,
+      cursorLine,
+    }: { doc: string | null; annotationsChanged: boolean; cursorLine: number }) => {
       setCursorLine(cursorLine)
+
+      // Sync annotations from CM6 to Zustand (for React sidebar)
+      const syncAnnotations = () => {
+        const storeView = useEditorStore.getState().viewRef?.current
+        if (storeView) {
+          try {
+            const anns = storeView.state.field(annotationField).annotations
+            useAnnotationStore.getState().syncFromEditor(anns)
+          } catch {
+            // annotationField may not be available yet during initialization
+          }
+        }
+      }
+
+      // Selection-only / annotation-only updates skip all doc-derived work
+      if (doc === null) {
+        if (annotationsChanged) syncAnnotations()
+        return
+      }
       updateContent(doc)
 
       // Update scene model (debounced internally by script-store)
@@ -91,29 +131,24 @@ export function EditorPanel(_props: EditorPanelProps) {
         sceneCount,
       })
 
-      // Sync annotations from CM6 to Zustand (for React sidebar)
-      const storeView = useEditorStore.getState().viewRef?.current
-      if (storeView) {
-        try {
-          const anns = storeView.state.field(annotationField).annotations
-          useAnnotationStore.getState().syncFromEditor(anns)
-        } catch {
-          // annotationField may not be available yet during initialization
-        }
-      }
+      syncAnnotations()
 
-      // Auto-save to IndexedDB (2s debounce)
-      // Read fileName from store directly — same stale closure issue
+      // Auto-save to IndexedDB (2s debounce); flushSave also runs on unmount / beforeunload
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-      saveTimerRef.current = setTimeout(() => {
-        const currentFileName = useEditorStore.getState().fileName
-        if (currentFileName) {
-          saveToDB(currentFileName, doc)
-        }
-      }, 2000)
+      pendingSaveRef.current = doc
+      saveTimerRef.current = setTimeout(flushSave, 2000)
     },
-    [setStats, setCursorLine, updateContent],
+    [setStats, setCursorLine, updateContent, flushSave],
   )
+
+  // Flush a pending autosave when the editor unmounts or the page closes
+  useEffect(() => {
+    window.addEventListener('beforeunload', flushSave)
+    return () => {
+      window.removeEventListener('beforeunload', flushSave)
+      flushSave()
+    }
+  }, [flushSave])
 
   const extensions = createEditorExtensions(theme, 'write', onUpdate)
   const viewRef = useCodeMirror(containerRef, content ?? '', extensions)
@@ -164,34 +199,36 @@ export function EditorPanel(_props: EditorPanelProps) {
     return () => useEditorStore.getState().setViewRef({ current: null })
   }, [viewRef])
 
-  // In AI Assist mode, selecting text goes straight to AI rewrite
+  // Analyze mode: the rewrite popup opens only on an explicit gesture —
+  // mouseup with Cmd/Ctrl held, or Cmd/Ctrl+Enter — never on a plain selection.
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-    const handler = () => {
+    const openRewrite = () => {
       const view = viewRef.current
-      if (!view) return
-      const currentMode = useSettingsStore.getState().editorMode
-      if (currentMode !== 'analyze') return
+      if (!view) return false
+      if (useSettingsStore.getState().editorMode !== 'analyze') return false
       const sel = view.state.selection.main
-      if (sel.from === sel.to) return
-      const doc = view.state.doc.toString()
-      const selectedText = doc.slice(sel.from, sel.to)
-      if (selectedText.trim().length < 20) return
-
-      // Open AI rewrite popup directly
-      const contextStart = Math.max(0, sel.from - 500)
-      const contextEnd = Math.min(doc.length, sel.to + 500)
-      const context = doc.slice(contextStart, contextEnd)
-      useAIStore.getState().setRewriteSelection({
-        from: sel.from,
-        to: sel.to,
-        text: selectedText,
-        context,
-      })
+      const rewrite = buildRewriteSelection(view.state.doc.toString(), sel.from, sel.to)
+      if (!rewrite) return false
+      useAIStore.getState().setRewriteSelection(rewrite)
+      return true
     }
-    container.addEventListener('mouseup', handler)
-    return () => container.removeEventListener('mouseup', handler)
+    const onMouseUp = (e: MouseEvent) => {
+      if (e.metaKey || e.ctrlKey) openRewrite()
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && openRewrite()) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    container.addEventListener('mouseup', onMouseUp)
+    container.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      container.removeEventListener('mouseup', onMouseUp)
+      container.removeEventListener('keydown', onKeyDown, true)
+    }
   }, [viewRef])
 
   // Open popup when editing an existing annotation (triggered by Edit button on AnnotationCard)

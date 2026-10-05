@@ -7,5 +7,19 @@ export async function routeApi(req: Request, local: (req: Request) => Promise<Re
   const body = await req.clone().json().catch(() => null)
   if (!isTesterToken(body?.apiKey)) return local(req)
   const { pathname } = new URL(req.url)
-  return fetch(`${TESTER_PROXY}${pathname}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: req.signal })
+  try {
+    const r = await fetch(`${TESTER_PROXY}${pathname}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.any([req.signal, AbortSignal.timeout(60000)]),
+    })
+    // Rebuild from the decoded text: fetch already decompressed the body, so forwarding content-encoding breaks decoding.
+    const headers = new Headers()
+    const type = r.headers.get('content-type')
+    if (type) headers.set('content-type', type)
+    return new Response(await r.text(), { status: r.status, headers })
+  } catch (err) {
+    return Response.json({ error: err instanceof Error ? err.message : 'Tester proxy request failed' }, { status: 502 })
+  }
 }

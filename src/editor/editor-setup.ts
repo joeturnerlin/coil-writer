@@ -41,7 +41,13 @@ export const subtextCompartment = new Compartment()
 export function createEditorExtensions(
   theme: 'dark' | 'light' = 'dark',
   mode: EditorMode = 'write',
-  onUpdate?: (update: { doc: string; cursorLine: number; selection: { from: number; to: number } }) => void,
+  onUpdate?: (update: {
+    /** Full document text; null on selection-only / annotation-only updates (not computed). */
+    doc: string | null
+    annotationsChanged: boolean
+    cursorLine: number
+    selection: { from: number; to: number }
+  }) => void,
 ): Extension[] {
   const themeExtension = theme === 'dark' ? fountainDarkTheme : fountainLightTheme
 
@@ -82,10 +88,10 @@ export function createEditorExtensions(
             const annotationsChanged =
               update.startState.field(annotationField, false) !== update.state.field(annotationField, false)
             if (update.docChanged || update.selectionSet || annotationsChanged) {
-              const doc = update.state.doc.toString()
+              const doc = update.docChanged ? update.state.doc.toString() : null
               const cursorLine = update.state.doc.lineAt(update.state.selection.main.head).number
               const sel = update.state.selection.main
-              onUpdate({ doc, cursorLine, selection: { from: sel.from, to: sel.to } })
+              onUpdate({ doc, annotationsChanged, cursorLine, selection: { from: sel.from, to: sel.to } })
             }
 
             // Track manual edits for revision marks when revision mode is on
