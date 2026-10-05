@@ -118,7 +118,7 @@ describe('settings store: slots + migration', () => {
     expect(useSettingsStore.getState().customSlots.custom1).toMatchObject({ bg: '#10203a', text: '#f3e9d2' })
 
     const saved = JSON.parse(data['coil-settings-v3'])
-    expect(saved.version).toBe(3)
+    expect(saved.version).toBe(4)
     expect(saved.state.customSlots.custom1.accent).toBe('#ffb347')
 
     vi.resetModules()

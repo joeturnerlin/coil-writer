@@ -2,6 +2,7 @@ import { ChevronLeft } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { jumpTo, onEditorScroll, topVisiblePos } from '../editor/navigation'
 import type { Episode } from '../editor/types'
+import { SCENE_ROW, SIDEBAR_DEFAULT, computeFitWidth, splitSlugline, useFitWidth } from '../lib/sidebar-fit'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
 import { useSettingsStore } from '../store/settings-store'
@@ -10,6 +11,74 @@ interface SceneItem {
   index: number
   title: string
   startPos: number
+}
+
+const SCENE_FONT = "'Inter', -apple-system, sans-serif"
+
+function SceneRow({
+  number,
+  title,
+  active,
+  onSelect,
+}: { number: number; title: string; active: boolean; onSelect: () => void }) {
+  const [hover, setHover] = useState(false)
+  const { prefix, rest } = splitSlugline(title)
+  return (
+    <button
+      title={title}
+      style={{
+        width: '100%',
+        textAlign: 'left',
+        padding: `6px ${SCENE_ROW.padRight}px 6px ${SCENE_ROW.padLeft}px`,
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'baseline',
+        gap: `${SCENE_ROW.gap}px`,
+        background: active || hover ? 'var(--bg-hover)' : 'transparent',
+        border: 'none',
+        borderLeftStyle: 'solid',
+        borderLeftWidth: `${SCENE_ROW.borderLeft}px`,
+        borderLeftColor: active ? 'var(--color-scene-heading)' : 'transparent',
+        transition: 'background 0.1s ease',
+        fontFamily: SCENE_FONT,
+      }}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={onSelect}
+      type="button"
+    >
+      <span
+        style={{
+          width: `${SCENE_ROW.numberCol}px`,
+          flexShrink: 0,
+          textAlign: 'right',
+          fontFamily: "'JetBrains Mono', monospace",
+          fontSize: '10px',
+          fontVariantNumeric: 'tabular-nums',
+          color: 'var(--text-dim)',
+        }}
+      >
+        {number}
+      </span>
+      <span
+        style={{
+          flex: 1,
+          minWidth: 0,
+          fontSize: '13px',
+          lineHeight: 1.35,
+          letterSpacing: 'normal',
+          fontWeight: active ? 600 : 400,
+          color: active ? 'var(--color-scene-heading)' : hover ? 'var(--text-primary)' : 'var(--text-secondary)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {prefix && <span style={{ opacity: 0.6 }}>{prefix}</span>}
+        {rest}
+      </span>
+    </button>
+  )
 }
 
 export function EpisodeNavigator() {
@@ -55,6 +124,30 @@ export function EpisodeNavigator() {
   }, [content])
 
   const isSceneMode = episodes.length === 0 && scenes.length > 0
+
+  // Auto-fit: measure the longest heading (widest weight) and publish the fitted width; the shell uses it while no width is stored.
+  const setFit = useFitWidth((st) => st.setFit)
+  useEffect(() => {
+    if (!isSceneMode) {
+      setFit(SIDEBAR_DEFAULT)
+      return
+    }
+    let cancelled = false
+    const measure = () => {
+      const ctx = document.createElement('canvas').getContext('2d')
+      if (!ctx || cancelled) return
+      ctx.font = `600 13px ${SCENE_FONT}`
+      let longest = 0
+      for (const sc of scenes) longest = Math.max(longest, ctx.measureText(sc.title).width)
+      setFit(computeFitWidth(longest))
+    }
+    const timer = setTimeout(measure, 150)
+    void document.fonts?.ready.then(measure)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [scenes, isSceneMode, setFit])
 
   // Track active episode/scene by scroll position (viewport top), not cursor
   useEffect(() => {
@@ -280,45 +373,16 @@ export function EpisodeNavigator() {
           scenes.map((sc) => {
             const isActive = activeScene === sc.index
             return (
-              <button
+              <SceneRow
                 key={sc.index}
-                style={{
-                  width: '100%',
-                  textAlign: 'left',
-                  padding: '6px 12px',
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: isActive ? 'var(--bg-hover)' : 'transparent',
-                  border: 'none',
-                  borderLeftStyle: 'solid',
-                  borderLeftWidth: '2px',
-                  borderLeftColor: isActive ? 'var(--color-scene-heading)' : 'transparent',
-                  transition: 'background 0.1s ease',
-                  fontFamily: 'inherit',
-                }}
-                onClick={() => {
+                number={sc.index}
+                title={sc.title}
+                active={isActive}
+                onSelect={() => {
                   scrollToPosition(sc.startPos)
                   setActiveScene(sc.index)
                 }}
-                type="button"
-              >
-                <div
-                  style={{
-                    fontSize: '10px',
-                    color: isActive ? 'var(--color-scene-heading)' : 'var(--text-secondary)',
-                    fontWeight: isActive ? 600 : 400,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    maxWidth: '150px',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {sc.title}
-                </div>
-              </button>
+              />
             )
           })}
 

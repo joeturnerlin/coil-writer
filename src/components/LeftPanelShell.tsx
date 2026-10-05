@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react'
 import { useRef, useState } from 'react'
-import { LEFT_PANEL_DEFAULT, useSettingsStore } from '../store/settings-store'
+import { SIDEBAR_DEFAULT, useFitWidth } from '../lib/sidebar-fit'
+import { useSettingsStore } from '../store/settings-store'
 import { ContextualLeftPanel } from './ContextualLeftPanel'
 
 /**
@@ -8,9 +9,12 @@ import { ContextualLeftPanel } from './ContextualLeftPanel'
  * The panel stays mounted while collapsed (hidden, non-focusable) so the width can transition.
  */
 export function LeftPanelShell() {
-  const { showEpisodeNav, leftPanelWidth, setLeftPanelWidth } = useSettingsStore()
+  const { showEpisodeNav, leftPanelWidth, setLeftPanelWidth, editorMode } = useSettingsStore()
+  const fit = useFitWidth((s) => s.fit)
+  // null = auto-fit to the longest scene heading (Write mode lists scenes; other panels keep the default width)
+  const baseWidth = leftPanelWidth ?? (editorMode === 'write' ? fit : SIDEBAR_DEFAULT)
   // Never squeeze the editor: leave room for a right panel (340px) plus a 480px editor; the stored width is kept.
-  const shown = `min(${leftPanelWidth}px, max(160px, calc(100vw - 820px)))`
+  const shown = `min(${baseWidth}px, max(160px, calc(100vw - 820px)))`
   const [dragging, setDragging] = useState(false)
   const [hover, setHover] = useState(false)
   const drag = useRef<{ startX: number; startWidth: number } | null>(null)
@@ -35,7 +39,7 @@ export function LeftPanelShell() {
         <ContextualLeftPanel />
       </div>
       <div
-        title="Drag to resize, double-click to reset"
+        title="Drag to resize, double-click to fit"
         data-testid="left-panel-resize-handle"
         style={{
           position: 'absolute',
@@ -51,12 +55,12 @@ export function LeftPanelShell() {
         }}
         onMouseEnter={() => setHover(true)}
         onMouseLeave={() => setHover(false)}
-        onDoubleClick={() => setLeftPanelWidth(LEFT_PANEL_DEFAULT)}
+        onDoubleClick={() => setLeftPanelWidth(null)}
         onPointerDown={(e) => {
           e.preventDefault()
           e.currentTarget.setPointerCapture(e.pointerId)
           // Start from the width on screen (the viewport clamp may show less than the stored width)
-          const shown = e.currentTarget.parentElement?.getBoundingClientRect().width ?? leftPanelWidth
+          const shown = e.currentTarget.parentElement?.getBoundingClientRect().width ?? baseWidth
           drag.current = { startX: e.clientX, startWidth: Math.round(shown) }
           setDragging(true)
         }}
