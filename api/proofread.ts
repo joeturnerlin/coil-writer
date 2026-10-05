@@ -8,7 +8,7 @@
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { createProviderHandler } from './providers'
+import { createProviderHandler } from './providers.js'
 
 export const config = { maxDuration: 60 }
 

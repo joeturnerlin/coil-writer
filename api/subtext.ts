@@ -6,7 +6,7 @@
  * Anthropic/OpenAI require the user to provide their own key.
  */
 
-import { createProviderHandler } from './providers'
+import { createProviderHandler } from './providers.js'
 
 export const config = { runtime: 'edge' }
 

@@ -3,11 +3,11 @@
  * Each route supplies only its prompt-building and rate-limit feature.
  */
 
-import { AVAILABLE_MODELS } from '../src/lib/models'
-import { parseGeminiUsage, parseOpenAIUsage } from '../src/lib/usage'
-import { proxyAnthropic } from './anthropic'
-import { checkRateLimit, RateLimitError, type RateLimitFeature } from './rate-limit'
-import { applyTesterToken, isTesterToken } from './tester'
+import { AVAILABLE_MODELS } from '../src/lib/models.js'
+import { parseGeminiUsage, parseOpenAIUsage } from '../src/lib/usage.js'
+import { proxyAnthropic } from './anthropic.js'
+import { checkRateLimit, RateLimitError, type RateLimitFeature } from './rate-limit.js'
+import { applyTesterToken, isTesterToken } from './tester.js'
 
 /** Ceiling on client-requested output tokens (matches analyze). */
 export const MAX_OUTPUT_TOKENS = 16384
