@@ -183,7 +183,8 @@ describe('rehydrate guard (Astra)', () => {
         version: 3,
         state: {
           preset: 'draft',
-          draftBase: 'muted',
+          draftBase: 'light',
+          theme: 'dark',
           customDraft: { bg: '#0a0a0f', text: '#0a0a0f', accent: '#00f0ff' },
         },
       }),
@@ -205,6 +206,7 @@ describe('rehydrate guard (Astra)', () => {
     })
     vi.resetModules()
     const { useSettingsStore } = await import('../src/store/settings-store')
-    expect(useSettingsStore.getState().preset).toBe('muted')
+    expect(useSettingsStore.getState().preset).toBe('light')
+    expect(useSettingsStore.getState().theme).toBe('light')
   })
 })

@@ -183,7 +183,10 @@ export const useSettingsStore = create<SettingsState>()(
             if (state.preset === 'draft' && (!d || contrastRatio(d.text, d.bg) < CONTRAST_BLOCK)) {
               state.preset = state.draftBase
             }
-            applyPreset(resolveTheme(state.preset, state.customDraft, state.customSlots))
+            const resolved = resolveTheme(state.preset, state.customDraft, state.customSlots)
+            // Keep the light/dark flag (CodeMirror theme, badges) in step with whatever was restored
+            state.theme = resolved.isDark ? 'dark' : 'light'
+            applyPreset(resolved)
           }
         }
       },
