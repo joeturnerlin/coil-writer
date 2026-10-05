@@ -7,12 +7,14 @@ import { ConversionWarnings } from './components/ConversionWarnings'
 import { DualRewritePopup } from './components/DualRewritePopup'
 import { EditorPanel } from './components/EditorPanel'
 import { FileDropZone } from './components/FileDropZone'
+import { OfflineBanner } from './components/OfflineBanner'
 import { OnboardingOverlay } from './components/OnboardingOverlay'
 import { SettingsDialog } from './components/SettingsDialog'
 import { StashDrawer } from './components/StashDrawer'
 import { StatsBar } from './components/StatsBar'
 import { Toolbar } from './components/Toolbar'
 import { TypeIndicator } from './components/TypeIndicator'
+import { connectDesktop } from './lib/desktop'
 import { getRecoveredDocument } from './lib/persistence'
 import { useEditorStore } from './store/editor-store'
 import { useOnboardingStore } from './store/onboarding-store'
@@ -20,13 +22,22 @@ import { useSettingsStore } from './store/settings-store'
 
 export function App() {
   const { fileName, content, importWarnings, importFormat } = useEditorStore()
-  const { theme, showEpisodeNav, showAnnotations, editorMode, onboardingComplete, setOnboardingComplete } =
-    useSettingsStore()
+  const {
+    theme,
+    showEpisodeNav,
+    showAnnotations,
+    showProofread,
+    editorMode,
+    onboardingComplete,
+    setOnboardingComplete,
+  } = useSettingsStore()
   const tourStep = useOnboardingStore((s) => s.tourStep)
   const [focusMode, setFocusMode] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
 
   const hasDocument = content !== null
+
+  useEffect(connectDesktop, [])
 
   // Track when tour completes to mark onboarding done
   const prevTourStep = useRef(tourStep)
@@ -42,8 +53,8 @@ export function App() {
   useEffect(() => {
     if (hasDocument) return
     getRecoveredDocument().then((doc) => {
-      if (doc) {
-        useEditorStore.getState().openFile(doc.fileName, doc.content)
+      if (doc && useEditorStore.getState().content === null) {
+        useEditorStore.getState().openFile(doc.fileName, doc.content, undefined, doc.documentId)
       }
     })
   }, [])
@@ -51,26 +62,28 @@ export function App() {
   // Keyboard shortcuts: focus mode + zoom
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.metaKey && e.shiftKey && e.key === 'f') {
+      // Ctrl+E is CodeMirror's end-of-line on Mac, so only Cmd counts there
+      const mod = /Mac/.test(navigator.platform) ? e.metaKey : e.ctrlKey
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
         setFocusMode((prev) => !prev)
       }
       if (e.key === 'Escape') {
         setFocusMode(false)
       }
-      if (e.metaKey && (e.key === '=' || e.key === '+')) {
+      if (mod && (e.key === '=' || e.key === '+')) {
         e.preventDefault()
         useSettingsStore.getState().zoomIn()
       }
-      if (e.metaKey && e.key === '-') {
+      if (mod && e.key === '-') {
         e.preventDefault()
         useSettingsStore.getState().zoomOut()
       }
-      if (e.metaKey && e.key === '0') {
+      if (mod && e.key === '0') {
         e.preventDefault()
         useSettingsStore.getState().resetZoom()
       }
-      if (e.metaKey && e.key === 'e') {
+      if (mod && e.key === 'e') {
         e.preventDefault()
         const current = useSettingsStore.getState().editorMode
         useSettingsStore.getState().setEditorMode(current === 'write' ? 'analyze' : 'write')
@@ -90,6 +103,8 @@ export function App() {
           focusMode={focusMode}
         />
       )}
+
+      <OfflineBanner />
 
       {/* Conversion warnings toast */}
       {!focusMode && importWarnings.length > 0 && (
@@ -111,7 +126,9 @@ export function App() {
         </div>
 
         {/* Right panel — contextual by mode */}
-        {!focusMode && hasDocument && (editorMode === 'analyze' || showAnnotations) && <ContextualRightPanel />}
+        {!focusMode && hasDocument && (editorMode === 'analyze' || showAnnotations || showProofread) && (
+          <ContextualRightPanel />
+        )}
       </div>
 
       {/* Stash drawer — between editor and stats bar */}

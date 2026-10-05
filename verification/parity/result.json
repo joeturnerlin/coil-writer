@@ -1,0 +1,31 @@
+{
+  "width": 1280,
+  "height": 800,
+  "differentPixels": 308,
+  "ratio": 0.00030078125,
+  "maximumRatio": 0.0005,
+  "pixelmatchThreshold": 0.01,
+  "includeAA": false,
+  "colorProfile": "srgb",
+  "maximumAccentChannelDelta": 1,
+  "accents": [
+    {
+      "rgb": [
+        0,
+        240,
+        255
+      ],
+      "samples": 480,
+      "maxChannelDelta": 0
+    },
+    {
+      "rgb": [
+        232,
+        160,
+        64
+      ],
+      "samples": 435,
+      "maxChannelDelta": 0
+    }
+  ]
+}

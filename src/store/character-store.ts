@@ -5,6 +5,7 @@
 import { create } from 'zustand'
 import { getProfileOverrides, saveProfileOverride } from '../lib/persistence'
 import type { CharacterProfile } from '../lib/voice-profile'
+import { useEditorStore } from './editor-store'
 
 export interface CharacterOverrides {
   addedForbidden?: string[]
@@ -89,7 +90,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   loadOverrides: async (fileName) => {
     set({ loading: true })
     try {
-      const records = await getProfileOverrides(fileName)
+      const records = await getProfileOverrides(fileName, useEditorStore.getState().documentId ?? undefined)
       const overrides: Record<string, CharacterOverrides> = {}
       for (const r of records) {
         try {
@@ -107,7 +108,13 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
   persistOverrides: async (fileName) => {
     const { overrides } = get()
     for (const [characterName, ov] of Object.entries(overrides)) {
-      await saveProfileOverride(fileName, characterName, JSON.stringify(ov), ov.source ?? 'manual')
+      await saveProfileOverride(
+        fileName,
+        characterName,
+        JSON.stringify(ov),
+        ov.source ?? 'manual',
+        useEditorStore.getState().documentId ?? undefined,
+      )
     }
   },
 
@@ -130,7 +137,7 @@ export const useCharacterStore = create<CharacterState>((set, get) => ({
       }
     }
     if (ov.removedForbidden) {
-      merged.forbidden_patterns = merged.forbidden_patterns.filter((f) => !ov.removedForbidden!.includes(f.pattern))
+      merged.forbidden_patterns = merged.forbidden_patterns.filter((f) => !ov.removedForbidden?.includes(f.pattern))
     }
     if (ov.addedVocabulary) {
       const existing = merged.vocabulary.map((v) => v.pattern)

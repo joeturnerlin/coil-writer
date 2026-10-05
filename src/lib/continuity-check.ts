@@ -12,6 +12,7 @@
  */
 
 import { dispatchAI } from './ai-dispatch'
+import { parseJsonLoose } from './json-parse'
 import type { SceneBlock } from './scene-model'
 
 export interface ContinuityIssue {
@@ -73,7 +74,7 @@ export async function checkContinuity(scenes: SceneBlock[], signal?: AbortSignal
     signal,
   })
 
-  const parsed = JSON.parse(result.text)
+  const parsed = parseJsonLoose<{ issues?: unknown }>(result.text, 'continuity check')
   const rawIssues: unknown[] = Array.isArray(parsed.issues) ? parsed.issues : []
 
   // Validate and normalize each issue

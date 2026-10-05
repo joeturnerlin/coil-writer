@@ -338,13 +338,22 @@ body.light .cm-annotation-mark {
 
 /* ── Analysis scanline — vertical sweep, editor-only ── */
 @keyframes scanline-sweep {
-  0% { top: 0; }
-  100% { top: 100%; }
+  0% {
+    top: 0;
+  }
+  100% {
+    top: 100%;
+  }
 }
 
 @keyframes scanline-glow {
-  0%, 100% { opacity: 0.6; }
-  50% { opacity: 1; }
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 .analysis-scanline {
@@ -361,7 +370,7 @@ body.light .cm-annotation-mark {
 
 /* The bright scan line */
 .analysis-scanline::before {
-  content: '';
+  content: "";
   position: absolute;
   left: 5%;
   right: 5%;
@@ -369,26 +378,19 @@ body.light .cm-annotation-mark {
   background: var(--accent-cyan, #00f0ff);
   opacity: 0.7;
   border-radius: 1px;
-  box-shadow:
-    0 0 8px var(--accent-cyan, #00f0ff),
-    0 0 20px var(--accent-cyan, #00f0ff),
-    0 0 40px rgba(0, 240, 255, 0.3);
+  box-shadow: 0 0 8px var(--accent-cyan, #00f0ff), 0 0 20px var(--accent-cyan, #00f0ff), 0 0 40px rgba(0, 240, 255, 0.3);
   animation: scanline-glow 1.5s ease-in-out infinite;
 }
 
 /* Trailing glow beneath the line */
 .analysis-scanline::after {
-  content: '';
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
   top: 0;
   height: 80px;
-  background: linear-gradient(
-    180deg,
-    rgba(0, 240, 255, 0.08) 0%,
-    transparent 100%
-  );
+  background: linear-gradient(180deg, rgba(0, 240, 255, 0.08) 0%, transparent 100%);
   pointer-events: none;
 }
 
@@ -401,4 +403,74 @@ body.light .cm-annotation-mark {
 
 body.light .cm-page-break-line {
   border-bottom-color: rgba(0, 0, 0, 0.08) !important;
+}
+
+/* ── Find & Replace panel (src/editor/find-panel.ts) — theme via CSS vars, so dark/muted/light all follow ── */
+body .cm-panels .coil-find {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 18px;
+}
+
+body .cm-panels .coil-find-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+body .cm-panels .coil-find input,
+body .cm-panels .coil-find button {
+  font-family: "Inter", system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1.3;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border-light);
+  border-radius: 5px;
+  padding: 3px 10px;
+  margin: 0;
+}
+
+body .cm-panels .coil-find input {
+  flex: 1 1 220px;
+  min-width: 160px;
+}
+
+body .cm-panels .coil-find input:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+}
+
+body .cm-panels .coil-find button {
+  cursor: pointer;
+  color: var(--text-muted);
+}
+
+body .cm-panels .coil-find button:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+body .cm-panels .coil-find button[aria-pressed="true"] {
+  background: var(--accent-cyan-dim);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+body .cm-panels .coil-find .coil-find-close {
+  margin-left: auto;
+  padding: 3px 8px;
+}
+
+.coil-find-count {
+  color: var(--text-muted);
+  font-size: 18px;
+  min-width: 7ch;
 }

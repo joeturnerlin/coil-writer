@@ -12,6 +12,7 @@ interface SettingsState {
   showEpisodeNav: boolean
   editorMode: EditorMode
   showAnnotations: boolean
+  showProofread: boolean
 
   // New fields
   activeOverlay: ActiveOverlay
@@ -28,6 +29,7 @@ interface SettingsState {
   toggleEpisodeNav: () => void
   setEditorMode: (mode: EditorMode) => void
   toggleAnnotations: () => void
+  toggleProofread: () => void
 
   setActiveOverlay: (overlay: ActiveOverlay) => void
   setStructureFramework: (fw: StructureFramework) => void
@@ -49,6 +51,7 @@ export const useSettingsStore = create<SettingsState>()(
       showEpisodeNav: true,
       editorMode: 'write' as EditorMode,
       showAnnotations: false,
+      showProofread: false,
 
       activeOverlay: 'none' as ActiveOverlay,
       structureFramework: 'save-the-cat' as StructureFramework,
@@ -79,6 +82,7 @@ export const useSettingsStore = create<SettingsState>()(
           showAnnotations: editorMode === 'analyze',
         }),
       toggleAnnotations: () => set((s) => ({ showAnnotations: !s.showAnnotations })),
+      toggleProofread: () => set((s) => ({ showProofread: !s.showProofread })),
 
       setActiveOverlay: (activeOverlay) => set({ activeOverlay }),
       setStructureFramework: (structureFramework) => set({ structureFramework }),

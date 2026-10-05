@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Required for every Mac App Store app. -->
+  <key>com.apple.security.app-sandbox</key>
+  <true/>
+  <!-- AI calls (provider APIs and the hosted tester proxy) are outbound HTTPS from the main process. -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <!-- File > Open / Save As dialogs and Finder-opened .fountain files. -->
+  <key>com.apple.security.files.user-selected.read-write</key>
+  <true/>
+  <!-- window.print() (File > Print). -->
+  <key>com.apple.security.print</key>
+  <true/>
+  <!--
+    Deliberately absent: com.apple.application-identifier and com.apple.developer.team-identifier.
+    @electron/osx-sign (preAutoEntitlements, on by default) derives both from the embedded
+    provisioning profile at signing time, so no team-id placeholder is needed here.
+  -->
+</dict>
+</plist>

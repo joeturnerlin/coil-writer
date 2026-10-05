@@ -1,11 +1,29 @@
 import type { Annotation } from '../editor/types'
+import { useEditorStore } from '../store/editor-store'
+import { downloadFile } from './file-io'
+import { anchorAnnotation } from './note-transfer'
+
+function exportAnchor(a: Annotation, content: string | null, fileName: string) {
+  const derived = content !== null && a.anchorContext === undefined ? anchorAnnotation(a, content, fileName) : null
+  return {
+    anchorHeading: a.anchorHeading ?? derived?.anchorHeading ?? null,
+    anchorContext: a.anchorContext ?? derived?.anchorContext ?? null,
+    anchorCharacter: a.anchorCharacter ?? derived?.anchorCharacter ?? null,
+  }
+}
 
 /**
- * Export annotations as a JSON file download.
+ * Export annotations as a JSON file download, including anchor fields so notes can be re-attached.
+ * Anchors missing on an annotation are derived from `content` (default: the open document).
  */
-export function exportAnnotationsJSON(annotations: Annotation[], fileName: string) {
+export async function exportAnnotationsJSON(
+  annotations: Annotation[],
+  fileName: string,
+  content: string | null = useEditorStore.getState().content,
+) {
   const data = {
     source: fileName,
+    documentId: useEditorStore.getState().documentId,
     exportedAt: new Date().toISOString(),
     count: annotations.length,
     annotations: annotations.map((a) => ({
@@ -19,23 +37,19 @@ export function exportAnnotationsJSON(annotations: Annotation[], fileName: strin
       from: a.from,
       to: a.to,
       createdAt: a.createdAt,
+      ...exportAnchor(a, content, fileName),
     })),
   }
 
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName.replace(/\.fountain$/i, '') + '-annotations.json'
-  a.click()
-  URL.revokeObjectURL(url)
+  await downloadFile(blob, `${fileName.replace(/\.fountain$/i, '')}-annotations.json`)
 }
 
 /**
  * Export Fountain file with inline annotation comments inserted at annotated positions.
  * Annotations are inserted as Fountain notes: [ACTION/SEVERITY] comment
  */
-export function exportAnnotatedFountain(content: string, annotations: Annotation[], fileName: string) {
+export async function exportAnnotatedFountain(content: string, annotations: Annotation[], fileName: string) {
   // Sort annotations by position (descending) so insertions don't shift positions
   const sorted = [...annotations].sort((a, b) => b.to - a.to)
 
@@ -46,14 +60,9 @@ export function exportAnnotatedFountain(content: string, annotations: Annotation
     const marker = `/* [${ann.action.toUpperCase()}${severity}]${dims} ${ann.comment} */`
 
     // Insert marker after the annotated text
-    annotated = annotated.slice(0, ann.to) + ' ' + marker + annotated.slice(ann.to)
+    annotated = `${annotated.slice(0, ann.to)} ${marker}${annotated.slice(ann.to)}`
   }
 
   const blob = new Blob([annotated], { type: 'text/plain' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = fileName.replace(/\.fountain$/i, '') + '-annotated.fountain'
-  a.click()
-  URL.revokeObjectURL(url)
+  await downloadFile(blob, `${fileName.replace(/\.fountain$/i, '')}-annotated.fountain`)
 }

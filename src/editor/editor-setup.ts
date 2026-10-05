@@ -5,6 +5,7 @@ import { EditorView, keymap } from '@codemirror/view'
 import { useRevisionStore } from '../store/revision-store'
 import { annotationField } from './annotation-state'
 import { characterAutocomplete } from './character-autocomplete'
+import { createFindPanel } from './find-panel'
 import { fountainLineDecorations, fountainMarkDecorations } from './fountain-decorations'
 import { fountainKeymap } from './fountain-keymap'
 import { fountainLanguage } from './fountain-language'
@@ -26,21 +27,9 @@ export const themeCompartment = new Compartment()
 export const readOnlyCompartment = new Compartment()
 
 /**
- * Font size compartment — allows runtime font size changes.
- */
-export const fontSizeCompartment = new Compartment()
-
-/**
  * Subtext compartment — holds subtext gutter decorations in Analyze mode, empty in Write mode.
  */
 export const subtextCompartment = new Compartment()
-
-function fontSizeTheme(size: number) {
-  return EditorView.theme({
-    '&': { fontSize: `${size}px` },
-    '.cm-content': { fontSize: `${size}px` },
-  })
-}
 
 /**
  * Creates the full set of CM6 extensions for the Fountain editor.
@@ -53,8 +42,13 @@ function fontSizeTheme(size: number) {
 export function createEditorExtensions(
   theme: 'dark' | 'light' = 'dark',
   mode: EditorMode = 'write',
-  fontSize = 14,
-  onUpdate?: (update: { doc: string; cursorLine: number; selection: { from: number; to: number } }) => void,
+  onUpdate?: (update: {
+    /** Full document text; null on selection-only / annotation-only updates (not computed). */
+    doc: string | null
+    annotationsChanged: boolean
+    cursorLine: number
+    selection: { from: number; to: number }
+  }) => void,
 ): Extension[] {
   const themeExtension = theme === 'dark' ? fountainDarkTheme : fountainLightTheme
 
@@ -65,7 +59,6 @@ export function createEditorExtensions(
     // Themes
     fountainBaseTheme,
     themeCompartment.of(themeExtension),
-    fontSizeCompartment.of(fontSizeTheme(fontSize)),
 
     // Decorations (THREE separate providers — never mix)
     fountainLineDecorations,
@@ -82,9 +75,10 @@ export function createEditorExtensions(
 
     // Built-in extensions
     history(),
-    search(),
+    search({ createPanel: createFindPanel }),
     characterAutocomplete(),
     EditorView.lineWrapping,
+    EditorView.contentAttributes.of({ spellcheck: 'true' }), // browser/OS spellcheck underline
     readOnlyCompartment.of(EditorState.readOnly.of(false)),
     subtextCompartment.of([]),
 
@@ -96,10 +90,10 @@ export function createEditorExtensions(
             const annotationsChanged =
               update.startState.field(annotationField, false) !== update.state.field(annotationField, false)
             if (update.docChanged || update.selectionSet || annotationsChanged) {
-              const doc = update.state.doc.toString()
+              const doc = update.docChanged ? update.state.doc.toString() : null
               const cursorLine = update.state.doc.lineAt(update.state.selection.main.head).number
               const sel = update.state.selection.main
-              onUpdate({ doc, cursorLine, selection: { from: sel.from, to: sel.to } })
+              onUpdate({ doc, annotationsChanged, cursorLine, selection: { from: sel.from, to: sel.to } })
             }
 
             // Track manual edits for revision marks when revision mode is on

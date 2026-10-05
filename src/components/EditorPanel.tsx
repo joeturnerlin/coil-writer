@@ -1,22 +1,17 @@
-import { EditorView } from '@codemirror/view'
 import { useCallback, useEffect, useRef } from 'react'
 import { annotationField } from '../editor/annotation-state'
-import {
-  createEditorExtensions,
-  fontSizeCompartment,
-  subtextCompartment,
-  themeCompartment,
-} from '../editor/editor-setup'
+import { createEditorExtensions, subtextCompartment, themeCompartment } from '../editor/editor-setup'
 import { fountainDarkTheme, fountainLightTheme } from '../editor/fountain-theme'
+import { buildRewriteSelection } from '../editor/rewrite-selection'
 import { subtextExtension } from '../editor/subtext-decorations'
 import { useCodeMirror } from '../editor/use-codemirror'
-import { saveToDB } from '../lib/persistence'
+import { AUTOSAVE_INTERVAL_MS, saveToDB, stashUnsaved } from '../lib/persistence'
+import { installVersionHistory } from '../lib/version-history'
 import { useAIStore } from '../store/ai-store'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
 import { useScriptStore } from '../store/script-store'
 import { useSettingsStore } from '../store/settings-store'
-import { HeroSection } from './HeroSection'
 
 interface EditorPanelProps {
   focusMode: boolean
@@ -24,8 +19,8 @@ interface EditorPanelProps {
 
 export function EditorPanel(_props: EditorPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const { content, fileName, setStats, setCursorLine, updateContent } = useEditorStore()
-  const { theme, fontSize, zoomLevel, editorMode } = useSettingsStore()
+  const { content, fileName, documentVersion, setStats, setCursorLine, updateContent } = useEditorStore()
+  const { theme, zoomLevel, editorMode } = useSettingsStore()
   const analysisStatus = useAIStore((s) => s.analysisState.status)
   const isAnalyzing = analysisStatus === 'sending' || analysisStatus === 'analyzing'
 
@@ -33,17 +28,49 @@ export function EditorPanel(_props: EditorPanelProps) {
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Track previous fileName to detect when a new file is opened
-  const prevFileNameRef = useRef<string | null>(fileName)
+  const prevDocumentVersionRef = useRef(documentVersion)
 
-  const onUpdate = useCallback(
-    ({ doc, cursorLine, selection }: { doc: string; cursorLine: number; selection: { from: number; to: number } }) => {
-      setCursorLine(cursorLine)
-      updateContent(doc)
+  // Latest doc awaiting the debounced autosave (null = nothing pending). Carries the document it
+  // belongs to, so a file switch between edit and flush can't write one script under another's id.
+  const pendingSaveRef = useRef<{ doc: string; documentId: string; fileName: string; fileKey: string | null } | null>(
+    null,
+  )
 
-      // Update scene model (debounced internally by script-store)
-      useScriptStore.getState().updateFromContent(doc)
+  const flushSave = useCallback(() => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = null
+    const pending = pendingSaveRef.current
+    pendingSaveRef.current = null
+    if (pending === null) return
+    const { setSaveStatus, documentId, fileKey } = useEditorStore.getState()
+    setSaveStatus('saving')
+    // 'saved' only after the Dexie transaction commits; a failure is surfaced and retried.
+    // fileKey is read now (not at edit time) so a Save As in between is not overwritten with the old key.
+    saveToDB(
+      pending.documentId,
+      pending.fileName,
+      pending.doc,
+      // A switch-triggered flush belongs to the OUTGOING document: fill its edit-time key only if the stored row
+      // has none, so a Save As that already re-pointed it is not overwritten.
+      documentId === pending.documentId ? fileKey : pending.fileKey,
+      documentId !== pending.documentId,
+    ).then(
+      () => {
+        if (pendingSaveRef.current === null) setSaveStatus('saved')
+      },
+      (error) => {
+        setSaveStatus('failed', error instanceof Error ? error.message : String(error))
+        if (pendingSaveRef.current === null) {
+          pendingSaveRef.current = pending
+          saveTimerRef.current = setTimeout(flushSave, AUTOSAVE_INTERVAL_MS * 2)
+        }
+      },
+    )
+  }, [])
 
-      // Compute stats
+  // Doc-derived stats (also run on first load, when no edit event fires)
+  const computeStats = useCallback(
+    (doc: string) => {
       const lines = doc.split('\n')
       const wordCount = doc.split(/\s+/).filter(Boolean).length
       const totalContentLines = lines.filter((l) => l.trim() !== '').length
@@ -97,52 +124,103 @@ export function EditorPanel(_props: EditorPanelProps) {
         episodeCount,
         sceneCount,
       })
+    },
+    [setStats],
+  )
+
+  const onUpdate = useCallback(
+    ({
+      doc,
+      annotationsChanged,
+      cursorLine,
+    }: { doc: string | null; annotationsChanged: boolean; cursorLine: number }) => {
+      setCursorLine(cursorLine)
 
       // Sync annotations from CM6 to Zustand (for React sidebar)
-      const storeView = useEditorStore.getState().viewRef?.current
-      if (storeView) {
-        try {
-          const anns = storeView.state.field(annotationField).annotations
-          useAnnotationStore.getState().syncFromEditor(anns)
-        } catch {
-          // annotationField may not be available yet during initialization
+      const syncAnnotations = () => {
+        const storeView = useEditorStore.getState().viewRef?.current
+        if (storeView) {
+          try {
+            const anns = storeView.state.field(annotationField).annotations
+            useAnnotationStore.getState().syncFromEditor(anns)
+          } catch {
+            // annotationField may not be available yet during initialization
+          }
         }
       }
 
-      // Auto-save to IndexedDB (2s debounce)
-      // Read fileName from store directly — same stale closure issue
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-      saveTimerRef.current = setTimeout(() => {
-        const currentFileName = useEditorStore.getState().fileName
-        if (currentFileName) {
-          saveToDB(currentFileName, doc)
+      // Selection-only / annotation-only updates skip all doc-derived work
+      if (doc === null) {
+        if (annotationsChanged) syncAnnotations()
+        return
+      }
+      updateContent(doc)
+
+      // Update scene model (debounced internally by script-store)
+      useScriptStore.getState().updateFromContent(doc)
+
+      computeStats(doc)
+
+      syncAnnotations()
+
+      // Auto-save to IndexedDB (AUTOSAVE_INTERVAL_MS debounce); flushSave also runs on unmount / beforeunload
+      const { documentId, fileName: currentFileName } = useEditorStore.getState()
+      if (documentId && currentFileName) {
+        // A different document's edit still pending: write it out under its own id first
+        if (pendingSaveRef.current && pendingSaveRef.current.documentId !== documentId) flushSave()
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+        pendingSaveRef.current = {
+          doc,
+          documentId,
+          fileName: currentFileName,
+          fileKey: useEditorStore.getState().fileKey,
         }
-      }, 2000)
+        useEditorStore.getState().setSaveStatus('saving')
+        saveTimerRef.current = setTimeout(flushSave, AUTOSAVE_INTERVAL_MS)
+      }
     },
-    [setStats, setCursorLine, updateContent],
+    [computeStats, setCursorLine, updateContent, flushSave],
   )
 
-  const extensions = createEditorExtensions(theme, 'write', 14, onUpdate)
+  // Automatic version snapshots (idempotent)
+  useEffect(() => installVersionHistory(), [])
+
+  // Flush a pending autosave when the editor unmounts or the page closes
+  useEffect(() => {
+    // Unload can't wait for IndexedDB: keep a synchronous copy of any pending edit, then start the normal save.
+    const onUnload = () => {
+      if (pendingSaveRef.current) stashUnsaved(pendingSaveRef.current)
+      flushSave()
+    }
+    window.addEventListener('beforeunload', onUnload)
+    return () => {
+      window.removeEventListener('beforeunload', onUnload)
+      flushSave()
+    }
+  }, [flushSave])
+
+  const extensions = createEditorExtensions(theme, 'write', onUpdate)
   const viewRef = useCodeMirror(containerRef, content ?? '', extensions)
 
   // Load new content into CM6 when a different file is opened
   useEffect(() => {
     const view = viewRef.current
-    if (!view || !content) return
-    if (fileName !== prevFileNameRef.current) {
-      prevFileNameRef.current = fileName
+    if (!view || content === null) return
+    if (documentVersion !== prevDocumentVersionRef.current) {
+      prevDocumentVersionRef.current = documentVersion
       view.dispatch({
         changes: { from: 0, to: view.state.doc.length, insert: content },
       })
       // Force scene model update on file open (onUpdate only fires on edits)
       useScriptStore.getState().forceUpdate(content)
     }
-  }, [fileName, content, viewRef])
+  }, [documentVersion, content, viewRef])
 
   // Also populate scene model on initial load (auto-recovery)
   useEffect(() => {
     if (content) {
       useScriptStore.getState().forceUpdate(content)
+      computeStats(content)
     }
   }, [])
 
@@ -171,34 +249,36 @@ export function EditorPanel(_props: EditorPanelProps) {
     return () => useEditorStore.getState().setViewRef({ current: null })
   }, [viewRef])
 
-  // In AI Assist mode, selecting text goes straight to AI rewrite
+  // Analyze mode: the rewrite popup opens only on an explicit gesture —
+  // mouseup with Cmd/Ctrl held, or Cmd/Ctrl+Enter — never on a plain selection.
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
-    const handler = () => {
+    const openRewrite = () => {
       const view = viewRef.current
-      if (!view) return
-      const currentMode = useSettingsStore.getState().editorMode
-      if (currentMode !== 'analyze') return
+      if (!view) return false
+      if (useSettingsStore.getState().editorMode !== 'analyze') return false
       const sel = view.state.selection.main
-      if (sel.from === sel.to) return
-      const doc = view.state.doc.toString()
-      const selectedText = doc.slice(sel.from, sel.to)
-      if (selectedText.trim().length < 20) return
-
-      // Open AI rewrite popup directly
-      const contextStart = Math.max(0, sel.from - 500)
-      const contextEnd = Math.min(doc.length, sel.to + 500)
-      const context = doc.slice(contextStart, contextEnd)
-      useAIStore.getState().setRewriteSelection({
-        from: sel.from,
-        to: sel.to,
-        text: selectedText,
-        context,
-      })
+      const rewrite = buildRewriteSelection(view.state.doc.toString(), sel.from, sel.to)
+      if (!rewrite) return false
+      useAIStore.getState().setRewriteSelection(rewrite)
+      return true
     }
-    container.addEventListener('mouseup', handler)
-    return () => container.removeEventListener('mouseup', handler)
+    const onMouseUp = (e: MouseEvent) => {
+      if (e.metaKey || e.ctrlKey) openRewrite()
+    }
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && openRewrite()) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    container.addEventListener('mouseup', onMouseUp)
+    container.addEventListener('keydown', onKeyDown, true)
+    return () => {
+      container.removeEventListener('mouseup', onMouseUp)
+      container.removeEventListener('keydown', onKeyDown, true)
+    }
   }, [viewRef])
 
   // Open popup when editing an existing annotation (triggered by Edit button on AnnotationCard)
@@ -219,29 +299,17 @@ export function EditorPanel(_props: EditorPanelProps) {
     })
   }, [editingAnnotation, viewRef])
 
-  // Apply zoom: font size via CM6 compartment (triggers line-height recalc),
-  // layout scale via CSS variable (margins, maxWidth, spacing scale proportionally
-  // so line wrapping stays constant across zoom levels — true magnification).
+  // Apply zoom: layout scale via CSS variable (margins, maxWidth, spacing scale
+  // proportionally so line wrapping stays constant across zoom levels).
   useEffect(() => {
     const view = viewRef.current
     if (!view) return
-    const zoomFactor = zoomLevel / 100
-    const effectiveSize = Math.round(fontSize * zoomFactor)
-    view.dom.style.setProperty('--zoom-scale', String(zoomFactor))
-    view.dispatch({
-      effects: fontSizeCompartment.reconfigure(
-        EditorView.theme({
-          '&': { fontSize: `${effectiveSize}px` },
-          '.cm-content': { fontSize: `${effectiveSize}px` },
-        }),
-      ),
-    })
-  }, [fontSize, zoomLevel, viewRef])
+    view.dom.style.setProperty('--zoom-scale', String(zoomLevel / 100))
+  }, [zoomLevel, viewRef])
 
   return (
     <div style={{ position: 'relative', height: '100%' }}>
       <div className="h-full overflow-auto">
-        <HeroSection />
         <div ref={containerRef} />
       </div>
       {isAnalyzing && <div className="analysis-scanline" />}

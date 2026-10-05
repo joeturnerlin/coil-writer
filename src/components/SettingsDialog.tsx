@@ -1,7 +1,7 @@
 import { Eye, EyeOff, X } from 'lucide-react'
-import { useState } from 'react'
-import { AVAILABLE_MODELS } from '../lib/ai-provider'
+import { useEffect, useState } from 'react'
 import type { AIProvider } from '../lib/ai-provider'
+import { OPTIONAL_GOOGLE_MODEL, selectableModels } from '../lib/models'
 import { useAIStore } from '../store/ai-store'
 
 interface SettingsDialogProps {
@@ -27,9 +27,19 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   } = useAIStore()
   const [showKey, setShowKey] = useState(false)
 
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
   if (!open) return null
 
-  const modelsForProvider = AVAILABLE_MODELS.filter((m) => m.provider === provider)
+  const models = selectableModels(apiKeys.google)
+  const modelsForProvider = models.filter((m) => m.provider === provider)
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -54,7 +64,15 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
   }
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: <dialog> default styles would change the pixel-identical overlay
+    // biome-ignore lint/a11y/useKeyWithClickEvents: backdrop click is a mouse convenience; Escape is handled by the window listener above
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Settings"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
       style={{
         position: 'fixed',
         inset: 0,
@@ -108,6 +126,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
               display: 'flex',
               alignItems: 'center',
             }}
+            aria-label="Close"
             onClick={onClose}
             type="button"
           >
@@ -118,14 +137,18 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {/* Provider */}
           <div>
-            <label style={labelStyle}>AI Provider</label>
+            <label htmlFor="ai-provider" style={labelStyle}>
+              AI Provider
+            </label>
             <select
+              id="ai-provider"
               style={inputStyle}
               value={provider}
               onChange={(e) => {
                 const p = e.target.value as AIProvider
                 setProvider(p)
-                const firstModel = AVAILABLE_MODELS.find((m) => m.provider === p)
+                const firstModel =
+                  models.find((m) => m.provider === p) ?? (p === 'google' ? OPTIONAL_GOOGLE_MODEL : undefined)
                 if (firstModel) setModel(firstModel.id)
               }}
             >
@@ -137,8 +160,10 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
           {/* Model */}
           <div>
-            <label style={labelStyle}>Model</label>
-            <select style={inputStyle} value={model} onChange={(e) => setModel(e.target.value)}>
+            <label htmlFor="ai-model" style={labelStyle}>
+              Model
+            </label>
+            <select id="ai-model" style={inputStyle} value={model} onChange={(e) => setModel(e.target.value)}>
               {modelsForProvider.map((m) => (
                 <option key={m.id} value={m.id}>
                   {m.name}
@@ -149,9 +174,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
 
           {/* API Key */}
           <div>
-            <label style={labelStyle}>API Key ({provider})</label>
+            <label htmlFor="api-key" style={labelStyle}>
+              API Key ({provider})
+            </label>
             <div style={{ display: 'flex', gap: '8px' }}>
               <input
+                id="api-key"
                 style={{ ...inputStyle, flex: 1 }}
                 type={showKey ? 'text' : 'password'}
                 placeholder={`Enter ${provider} API key`}
@@ -193,9 +221,12 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
         {/* Comparison Mode */}
         <div style={{ padding: '0 20px 20px' }}>
           <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-            <label style={labelStyle}>Model Comparison</label>
+            <label htmlFor="model-comparison" style={labelStyle}>
+              Model Comparison
+            </label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
               <input
+                id="model-comparison"
                 type="checkbox"
                 checked={comparisonEnabled}
                 onChange={(e) => setComparisonEnabled(e.target.checked)}
@@ -209,10 +240,14 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
             {comparisonEnabled && (
               <div style={{ display: 'flex', gap: '12px' }}>
                 <div style={{ flex: 1 }}>
-                  <label style={{ ...labelStyle, fontSize: '9px', marginBottom: '4px', display: 'block' }}>
+                  <label
+                    htmlFor="comparison-A"
+                    style={{ ...labelStyle, fontSize: '9px', marginBottom: '4px', display: 'block' }}
+                  >
                     Model A
                   </label>
                   <select
+                    id="comparison-A"
                     style={{ ...inputStyle, fontSize: '11px' }}
                     value={`${comparisonProviderA}:${comparisonModelA}`}
                     onChange={(e) => {
@@ -220,7 +255,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                       setComparisonModels(prov as AIProvider, rest.join(':'), comparisonProviderB, comparisonModelB)
                     }}
                   >
-                    {AVAILABLE_MODELS.map((m) => (
+                    {models.map((m) => (
                       <option key={m.id} value={`${m.provider}:${m.id}`}>
                         {m.name}
                       </option>
@@ -228,10 +263,14 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                   </select>
                 </div>
                 <div style={{ flex: 1 }}>
-                  <label style={{ ...labelStyle, fontSize: '9px', marginBottom: '4px', display: 'block' }}>
+                  <label
+                    htmlFor="comparison-B"
+                    style={{ ...labelStyle, fontSize: '9px', marginBottom: '4px', display: 'block' }}
+                  >
                     Model B
                   </label>
                   <select
+                    id="comparison-B"
                     style={{ ...inputStyle, fontSize: '11px' }}
                     value={`${comparisonProviderB}:${comparisonModelB}`}
                     onChange={(e) => {
@@ -239,7 +278,7 @@ export function SettingsDialog({ open, onClose }: SettingsDialogProps) {
                       setComparisonModels(comparisonProviderA, comparisonModelA, prov as AIProvider, rest.join(':'))
                     }}
                   >
-                    {AVAILABLE_MODELS.map((m) => (
+                    {models.map((m) => (
                       <option key={m.id} value={`${m.provider}:${m.id}`}>
                         {m.name}
                       </option>

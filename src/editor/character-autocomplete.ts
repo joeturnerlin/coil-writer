@@ -193,7 +193,7 @@ function sceneHeadingCompletionSource(context: CompletionContext): CompletionRes
         from,
         options: allLocations.map((loc) => ({
           label: loc,
-          apply: loc + ' - ',
+          apply: `${loc} - `,
           type: 'text',
           boost: 1,
         })),
@@ -207,7 +207,7 @@ function sceneHeadingCompletionSource(context: CompletionContext): CompletionRes
       from,
       options: matches.map((loc) => ({
         label: loc,
-        apply: loc + ' - ',
+        apply: `${loc} - `,
         type: 'text',
         boost: 1,
       })),

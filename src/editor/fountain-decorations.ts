@@ -268,26 +268,25 @@ function buildMarkDecorations(view: EditorView): DecorationSet {
 
     // Bold: **text**
     const boldRegex = /\*\*(.+?)\*\*/g
-    let match: RegExpExecArray | null
-    while ((match = boldRegex.exec(text)) !== null) {
+    for (const match of text.matchAll(boldRegex)) {
       decorations.push(boldDeco.range(offset + match.index, offset + match.index + match[0].length))
     }
 
     // Italic: *text* (but not **)
     const italicRegex = /(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g
-    while ((match = italicRegex.exec(text)) !== null) {
+    for (const match of text.matchAll(italicRegex)) {
       decorations.push(italicDeco.range(offset + match.index, offset + match.index + match[0].length))
     }
 
     // Underline: _text_
     const underlineRegex = /_(.+?)_/g
-    while ((match = underlineRegex.exec(text)) !== null) {
+    for (const match of text.matchAll(underlineRegex)) {
       decorations.push(underlineDeco.range(offset + match.index, offset + match.index + match[0].length))
     }
 
     // Inline notes: [[text]] but NOT [[EPISODE ...]]
     const noteRegex = /\[\[(?!EPISODE)(.+?)\]\]/g
-    while ((match = noteRegex.exec(text)) !== null) {
+    for (const match of text.matchAll(noteRegex)) {
       decorations.push(noteDeco.range(offset + match.index, offset + match.index + match[0].length))
     }
   }

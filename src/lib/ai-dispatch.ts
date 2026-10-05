@@ -6,10 +6,15 @@
  * error normalization, single retry on 429/5xx.
  */
 
+import { recordUsage } from '../store/ai-activity-store'
 import { useAIStore } from '../store/ai-store'
+import { AIHttpError, aiFetch, httpError } from './ai-fetch'
 import type { AIProvider } from './ai-provider'
+import { type TokenUsage, parseGeminiUsage, usageFromWire } from './usage'
 
-export type AITask = 'rewrite' | 'analyze' | 'subtext' | 'structure' | 'continuity' | 'stash-retrieval'
+export { AIHttpError }
+
+export type AITask = 'rewrite' | 'analyze' | 'subtext' | 'structure' | 'continuity' | 'proofread' | 'stash-retrieval'
 
 export interface AIDispatchOptions {
   task: AITask
@@ -25,15 +30,17 @@ export interface AIDispatchOptions {
 export interface AIDispatchResult {
   text: string
   usageRemaining?: number
+  /** Tokens used by this call, when the provider reported them. */
+  usage?: TokenUsage
 }
 
 export async function dispatchAI(options: AIDispatchOptions): Promise<AIDispatchResult> {
   try {
     return await dispatchOnce(options)
   } catch (err) {
-    const msg = err instanceof Error ? err.message : ''
-    if (/429|5\d\d/.test(msg)) {
-      const delay = /429/.test(msg) ? 3000 : 1000
+    const status = err instanceof AIHttpError ? err.status : 0
+    if (status === 429 || (status >= 500 && status !== 504)) {
+      const delay = status === 429 ? 3000 : 1000
       await new Promise((r) => setTimeout(r, delay))
       return dispatchOnce(options)
     }
@@ -66,7 +73,7 @@ async function callProxy(
 ): Promise<AIDispatchResult> {
   const endpoint = taskToEndpoint(options.task)
 
-  const res = await fetch(endpoint, {
+  const res = await aiFetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: options.signal,
@@ -83,16 +90,19 @@ async function callProxy(
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`AI proxy error (${options.task}): ${res.status} ${err}`)
+    throw httpError(`AI proxy error (${options.task})`, res.status, err)
   }
 
   const data = await res.json()
   if (data.error) throw new Error(data.error)
 
+  const usage = usageFromWire(data.usage)
+  recordUsage(model, usage)
   const usageRemaining = res.headers.get('X-Usage-Remaining')
 
   return {
     text: data.text,
+    usage,
     usageRemaining: usageRemaining ? Number.parseInt(usageRemaining, 10) : undefined,
   }
 }
@@ -102,7 +112,7 @@ async function callGeminiDirect(options: AIDispatchOptions, model: string, apiKe
     throw new Error('No Gemini API key. Add one in Settings.')
   }
 
-  const res = await fetch(
+  const res = await aiFetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
@@ -121,14 +131,16 @@ async function callGeminiDirect(options: AIDispatchOptions, model: string, apiKe
 
   if (!res.ok) {
     const err = await res.text()
-    throw new Error(`Gemini ${options.task} error ${res.status}: ${err}`)
+    throw httpError(`Gemini ${options.task} error`, res.status, err)
   }
 
   const data = await res.json()
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!text) throw new Error(`Empty Gemini response for ${options.task}`)
 
-  return { text }
+  const usage = parseGeminiUsage(data)
+  recordUsage(model, usage)
+  return { text, usage }
 }
 
 function taskToEndpoint(task: AITask): string {
@@ -143,6 +155,8 @@ function taskToEndpoint(task: AITask): string {
       return '/api/structure'
     case 'continuity':
       return '/api/continuity'
+    case 'proofread':
+      return '/api/proofread'
     case 'stash-retrieval':
       return '/api/rewrite'
     default:

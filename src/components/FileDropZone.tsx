@@ -1,46 +1,33 @@
 import { Upload } from 'lucide-react'
 import { useCallback, useState } from 'react'
-import { importFile } from '../lib/converters/registry'
+import { ALL_EXTENSIONS } from '../lib/converters/registry'
 import { openScriptFile } from '../lib/file-io'
+import { openDocument } from '../lib/open-document'
 import { getRecoveredDocument } from '../lib/persistence'
 import { SAMPLE_SCRIPT_CONTENT, SAMPLE_SCRIPT_FILENAME } from '../lib/sample-script'
 import { useEditorStore } from '../store/editor-store'
 import { useOnboardingStore } from '../store/onboarding-store'
 
-const ACCEPTED_EXTENSIONS = ['.fountain', '.txt', '.fdx', '.fadein', '.highland', '.wdz', '.celtx']
+const ACCEPTED_EXTENSIONS = ALL_EXTENSIONS.split(',')
 
 export function FileDropZone() {
   const [isDragging, setIsDragging] = useState(false)
   const { openFile } = useEditorStore()
 
-  const handleFileData = useCallback(
-    async (fileName: string, data: ArrayBuffer) => {
-      const result = await importFile(fileName, data)
-      openFile(fileName, result.content)
-      if (result.warnings.length > 0) {
-        useEditorStore.getState().setImportWarnings(result.warnings, result.format)
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files[0]
+    if (!file) return
+    const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
+    if (ACCEPTED_EXTENSIONS.includes(ext) || file.type === 'text/plain') {
+      const reader = new FileReader()
+      reader.onload = (ev) => {
+        openDocument({ name: file.name, data: ev.target?.result as ArrayBuffer })
       }
-    },
-    [openFile],
-  )
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      setIsDragging(false)
-      const file = e.dataTransfer.files[0]
-      if (!file) return
-      const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'))
-      if (ACCEPTED_EXTENSIONS.includes(ext) || file.type === 'text/plain') {
-        const reader = new FileReader()
-        reader.onload = (ev) => {
-          handleFileData(file.name, ev.target?.result as ArrayBuffer)
-        }
-        reader.readAsArrayBuffer(file)
-      }
-    },
-    [handleFileData],
-  )
+      reader.readAsArrayBuffer(file)
+    }
+  }, [])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -54,14 +41,14 @@ export function FileDropZone() {
   const handleClick = async () => {
     const file = await openScriptFile()
     if (file) {
-      handleFileData(file.name, file.data)
+      openDocument(file)
     }
   }
 
   const handleRecover = async () => {
     const recovered = await getRecoveredDocument()
     if (recovered) {
-      openFile(recovered.fileName, recovered.content)
+      openFile(recovered.fileName, recovered.content, undefined, recovered.documentId)
     }
   }
 

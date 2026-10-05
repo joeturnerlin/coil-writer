@@ -1,0 +1,586 @@
+Verification log: verification/runs/20260928-104709/verify.log
+
+> recoil-fountain-editor@0.1.0 check
+> biome check src/
+
+src/components/BeatBoard.tsx:25:10 lint/correctness/noUnusedVariables ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This function is unused.
+
+    23 │ const UNMAPPED_COLOR = 'var(--border-color)'
+    24 │
+  > 25 │ function beatColor(category?: string): string {
+       │          ^^^^^^^^^
+    26 │   return (category && CATEGORY_COLORS[category]) || UNMAPPED_COLOR
+    27 │ }
+
+  i Unused variables usually are result of incomplete refactoring, typos and other source of bugs.
+
+
+src/App.tsx:145:9 lint/a11y/useKeyWithClickEvents ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Enforce to have the onClick mouse event with the onKeyUp, the onKeyDown, or the onKeyPress keyboard event.
+
+    143 │       {/* Focus mode escape hint */}
+    144 │       {focusMode && (
+  > 145 │         <div
+        │         ^^^^
+  > 146 │           className="fixed top-4 right-4 text-xs opacity-30 hover:opacity-70 transition-opacity cursor-pointer select-none"
+  > 147 │           style={{ color: theme === 'dark' ? '#888' : '#666' }}
+  > 148 │           onClick={() => setFocusMode(false)}
+  > 149 │         >
+        │         ^
+    150 │           ESC or Cmd+Shift+F to exit
+    151 │         </div>
+
+  i Actions triggered using mouse events should have corresponding keyboard events to account for keyboard-only navigation.
+
+
+src/App.tsx:23:11 lint/correctness/noUnusedVariables ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This variable is unused.
+
+    22 │ export function App() {
+  > 23 │   const { fileName, content, importWarnings, importFormat } = useEditorStore()
+       │           ^^^^^^^^
+    24 │   const { theme, showEpisodeNav, showAnnotations, editorMode, onboardingComplete, setOnboardingComplete } =
+    25 │     useSettingsStore()
+
+  i Unused variables usually are result of incomplete refactoring, typos and other source of bugs.
+
+
+src/App.tsx:45:3 lint/correctness/useExhaustiveDependencies ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! This hook does not specify all of its dependencies: hasDocument
+
+    44 │   // Auto-recover last document on startup
+  > 45 │   useEffect(() => {
+       │   ^^^^^^^^^
+    46 │     if (hasDocument) return
+    47 │     getRecoveredDocument().then((doc) => {
+
+  i This dependency is not specified in the hook dependency list.
+
+    44 │   // Auto-recover last document on startup
+    45 │   useEffect(() => {
+  > 46 │     if (hasDocument) return
+       │         ^^^^^^^^^^^
+    47 │     getRecoveredDocument().then((doc) => {
+    48 │       if (doc && useEditorStore.getState().content === null) {
+
+  i Either include it or remove the dependency array
+
+
+src/components/ContinuityPanel.tsx:39:5 lint/a11y/useKeyWithClickEvents ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Enforce to have the onClick mouse event with the onKeyUp, the onKeyDown, or the onKeyPress keyboard event.
+
+    38 │   return (
+  > 39 │     <div
+       │     ^^^^
+  > 40 │       style={{
+        ...
+  > 51 │       }}
+  > 52 │     >
+       │     ^
+    53 │       <div
+    54 │         style={{
+
+  i Actions triggered using mouse events should have corresponding keyboard events to account for keyboard-only navigation.
+
+
+src/components/ContinuityPanel.tsx:240:51 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Template literals are preferred over string concatenation.
+
+    238 │                         title={`Jump to ${sceneLabel}`}
+    239 │                       >
+  > 240 │                         {sceneLabel.length > 40 ? sceneLabel.slice(0, 40) + '...' : sceneLabel}
+        │                                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    241 │                       </button>
+    242 │                     </div>
+
+  i Unsafe fix: Use a template literal.
+
+    238 238 │                           title={`Jump to ${sceneLabel}`}
+    239 239 │                         >
+    240     │ - ························{sceneLabel.length·>·40·?·sceneLabel.slice(0,·40)·+·'...'·:·sceneLabel}
+        240 │ + ························{sceneLabel.length·>·40·?·`${sceneLabel.slice(0,·40)}...`·:·sceneLabel}
+    241 241 │                         </button>
+    242 242 │                       </div>
+
+
+src/components/ContinuityPanel.tsx:166:26 lint/suspicious/noArrayIndexKey ━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid using the index of an array as key property in an element.
+
+    164 │                 return (
+    165 │                   <div
+  > 166 │                     key={i}
+        │                          ^
+    167 │                     style={{
+    168 │                       padding: '10px 12px',
+
+  i This is the source of the key value.
+
+    154 │           ) : (
+    155 │             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+  > 156 │               {result.issues.map((issue, i) => {
+        │                                          ^
+    157 │                 const typeBadge = TYPE_BADGES[issue.type]
+    158 │                 const severityStyle = SEVERITY_STYLES[issue.severity]
+
+  i The order of the items may change, and this also affects performances and component state.
+
+  i Check the React documentation.
+
+
+src/components/AnnotationCard.tsx:71:43 lint/style/useTemplate  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Template literals are preferred over string concatenation.
+
+    70 │   const truncatedText =
+  > 71 │     annotation.selectedText.length > 80 ? annotation.selectedText.slice(0, 80) + '...' : annotation.selectedText
+       │                                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    72 │
+    73 │   return (
+
+  i Unsafe fix: Use a template literal.
+
+     69  69 │
+     70  70 │     const truncatedText =
+     71     │ - ····annotation.selectedText.length·>·80·?·annotation.selectedText.slice(0,·80)·+·'...'·:·annotation.selectedText
+         71 │ + ····annotation.selectedText.length·>·80·?·`${annotation.selectedText.slice(0,·80)}...`·:·annotation.selectedText
+     72  72 │
+     73  73 │     return (
+
+
+src/components/AnnotationCard.tsx:74:5 lint/a11y/useKeyWithClickEvents ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Enforce to have the onClick mouse event with the onKeyUp, the onKeyDown, or the onKeyPress keyboard event.
+
+    73 │   return (
+  > 74 │     <div
+       │     ^^^^
+  > 75 │       style={{
+        ...
+  > 86 │       onClick={handleGoTo}
+  > 87 │     >
+       │     ^
+    88 │       {/* Location */}
+    89 │       {location && (
+
+  i Actions triggered using mouse events should have corresponding keyboard events to account for keyboard-only navigation.
+
+
+src/components/AIRewritePopup.tsx:253:13 lint/a11y/noAutofocus  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid the autoFocus attribute.
+
+    251 │               }
+    252 │             }}
+  > 253 │             autoFocus
+        │             ^^^^^^^^^
+    254 │           />
+    255 │         </div>
+
+  i Unsafe fix: Remove the autoFocus attribute.
+
+    251 251 │                 }
+    252 252 │               }}
+    253     │ - ············autoFocus
+    254 253 │             />
+    255 254 │           </div>
+
+
+src/components/AIRewritePopup.tsx:368:15 lint/a11y/useKeyWithClickEvents ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Enforce to have the onClick mouse event with the onKeyUp, the onKeyDown, or the onKeyPress keyboard event.
+
+    367 │             {suggestions.map((s, i) => (
+  > 368 │               <div
+        │               ^^^^
+  > 369 │                 key={i}
+         ...
+  > 385 │                 }}
+  > 386 │               >
+        │               ^
+    387 │                 <div
+    388 │                   style={{
+
+  i Actions triggered using mouse events should have corresponding keyboard events to account for keyboard-only navigation.
+
+
+src/components/AIRewritePopup.tsx:369:22 lint/suspicious/noArrayIndexKey ━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Avoid using the index of an array as key property in an element.
+
+    367 │             {suggestions.map((s, i) => (
+    368 │               <div
+  > 369 │                 key={i}
+        │                      ^
+    370 │                 style={{
+    371 │                   marginBottom: '8px',
+
+  i This is the source of the key value.
+
+    365 │             </div>
+    366 │
+  > 367 │             {suggestions.map((s, i) => (
+        │                                  ^
+    368 │               <div
+    369 │                 key={i}
+
+  i The order of the items may change, and this also affects performances and component state.
+
+  i Check the React documentation.
+
+
+src/components/CharacterCard.tsx:103:7 lint/a11y/useKeyWithClickEvents ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Enforce to have the onClick mouse event with the onKeyUp, the onKeyDown, or the onKeyPress keyboard event.
+
+    101 │   if (!isExpanded) {
+    102 │     return (
+  > 103 │       <div
+        │       ^^^^
+  > 104 │         style={{
+         ...
+  > 120 │         onMouseLeave={() => setIsHovered(false)}
+  > 121 │       >
+        │       ^
+    122 │         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    123 │           <span
+
+  i Actions triggered using mouse events should have corresponding keyboard events to account for keyboard-only navigation.
+
+
+src/components/CharacterCard.tsx:229:7 lint/a11y/useKeyWithClickEvents ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Enforce to have the onClick mouse event with the onKeyUp, the onKeyDown, or the onKeyPress keyboard event.
+
+    227 │     >
+    228 │       {/* Header row (clickable to collapse) */}
+  > 229 │       <div
+        │       ^^^^
+  > 230 │         style={{
+         ...
+  > 237 │         onClick={onToggle}
+  > 238 │       >
+        │       ^
+    239 │         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    240 │           <span
+
+  i Actions triggered using mouse events should have corresponding keyboard events to account for keyboard-only navigation.
+
+
+src/components/CharacterHub.tsx:77:5 lint/a11y/useKeyWithClickEvents ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Enforce to have the onClick mouse event with the onKeyUp, the onKeyDown, or the onKeyPress keyboard event.
+
+    76 │   return (
+  > 77 │     <div
+       │     ^^^^
+  > 78 │       style={{
+        ...
+  > 89 │       onMouseLeave={() => setHovered(false)}
+  > 90 │     >
+       │     ^
+    91 │       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+    92 │         <span
+
+  i Actions triggered using mouse events should have corresponding keyboard events to account for keyboard-only navigation.
+
+
+src/components/CharacterHub.tsx:176:5 lint/a11y/useKeyWithClickEvents ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  ! Enforce to have the onClick mouse event with the onKeyUp, the onKeyDown, or the onKeyPress keyboard event.
+
+    175 │   return (
+  > 176 │     <div
+        │     ^^^^
+  > 177 │       style={{
+         ...
+  > 188 │       onMouseLeave={() => setHovered(false)}
+  > 189 │     >
+        │     ^
+    190 │       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '4px' }}>
+    191 │         <span
+
+  i Actions triggered using mouse events should have corresponding keyboard events to account for keyboard-only navigation.
+
+
+src/components/CharacterHub.tsx:277:3 lint/correctness/useExhaustiveDependencies ━━━━━━━━━━━━━━━━━━━
+
+  ! This hook specifies a dependency more specific that its captures: analysisState.status
+
+    276 │   // Log analysis state changes
+  > 277 │   useEffect(() => {
+        │   ^^^^^^^^^
+    278 │     if (analysisState.status === 'complete' && 'summary' in analysisState) {
+    279 │       log('success', `Voice: ${analysisState.summary}`)
+
+  i This capture is more generic than...
+
+    279 │       log('success', `Voice: ${analysisState.summary}`)
+    280 │     }
+  > 281 │     if (analysisState.status === 'error' && 'message' in analysisState) {
+        │                                                          ^^^^^^^^^^^^^
+    282 │       log('error', `Voice: ${analysisState.message}`)
+    283 │     }
+
+  i ...this dependency.
+
+    282 │       log('error', `Voice: ${analysisState.message}`)
+    283 │     }
+  > 284 │   }, [analysisState.status, log])
+        │       ^^^^^^^^^^^^^^^^^^^^
+    285 │
+    286 │   const handleToggle = (name: string) => {
+
+
+src/components/CharacterHub.tsx:277:3 lint/correctness/useExhaustiveDependencies ━━━━━━━━━━━━━━━━━━━
+
+  ! This hook does not specify all of its dependencies: analysisState
+
+    276 │   // Log analysis state changes
+  > 277 │   useEffect(() => {
+        │   ^^^^^^^^^
+    278 │     if (analysisState.status === 'complete' && 'summary' in analysisState) {
+    279 │       log('success', `Voice: ${analysisState.summary}`)
+
+  i This dependency is not specified in the hook dependency list.
+
+    279 │       log('success', `Voice: ${analysisState.summary}`)
+    280 │     }
+  > 281 │     if (analysisState.status === 'error' && 'message' in analysisState) {
+        │                                                          ^^^^^^^^^^^^^
+    282 │       log('error', `Voice: ${analysisState.message}`)
+    283 │     }
+
+  i This dependency is not specified in the hook dependency list.
+
+    276 │   // Log analysis state changes
+    277 │   useEffect(() => {
+  > 278 │     if (analysisState.status === 'complete' && 'summary' in analysisState) {
+        │                                                             ^^^^^^^^^^^^^
+    279 │       log('success', `Voice: ${analysisState.summary}`)
+    280 │     }
+
+
+src/components/CharacterHub.tsx:277:3 lint/correctness/useExhaustiveDependencies ━━━━━━━━━━━━━━━━━━━
+
+  ! This hook does not specify all of its dependencies: analysisState.summary
+
+    276 │   // Log analysis state changes
+  > 277 │   useEffect(() => {
+        │   ^^^^^^^^^
+    278 │     if (analysisState.status === 'complete' && 'summary' in analysisState) {
+    279 │       log('success', `Voice: ${analysisState.summary}`)
+
+  i This dependency is not specified in the hook dependency list.
+
+    277 │   useEffect(() => {
+    278 │     if (analysisState.status === 'complete' && 'summary' in analysisState) {
+  > 279 │       log('success', `Voice: ${analysisState.summary}`)
+        │                                ^^^^^^^^^^^^^^^^^^^^^
+    280 │     }
+    281 │     if (analysisState.status === 'error' && 'message' in analysisState) {
+
+
+src/components/CharacterHub.tsx:277:3 lint/correctness/useExhaustiveDependencies ━━━━━━━━━━━━━━━━━━━
+
+  ! This hook specifies a dependency more specific that its captures: analysisState.status
+
+    276 │   // Log analysis state changes
+  > 277 │   useEffect(() => {
+        │   ^^^^^^^^^
+    278 │     if (analysisState.status === 'complete' && 'summary' in analysisState) {
+    279 │       log('success', `Voice: ${analysisState.summary}`)
+
+  i This capture is more generic than...
+
+    276 │   // Log analysis state changes
+    277 │   useEffect(() => {
+  > 278 │     if (analysisState.status === 'complete' && 'summary' in analysisState) {
+        │                                                             ^^^^^^^^^^^^^
+    279 │       log('success', `Voice: ${analysisState.summary}`)
+    280 │     }
+
+  i ...this dependency.
+
+    282 │       log('error', `Voice: ${analysisState.message}`)
+    283 │     }
+  > 284 │   }, [analysisState.status, log])
+        │       ^^^^^^^^^^^^^^^^^^^^
+    285 │
+    286 │   const handleToggle = (name: string) => {
+
+
+The number of diagnostics exceeds the number allowed by Biome.
+Diagnostics not shown: 23.
+Checked 89 files in 27ms. No fixes applied.
+Found 43 warnings.
+
+> recoil-fountain-editor@0.1.0 test
+> vitest run
+
+
+ RUN  v3.2.4 /Users/joeturnerlin/Code/coil
+
+10:47:10 AM [vite] (ssr) warning: invalid import "../api/${route}". A file extension must be included in the static part of the import. For example: import(`./foo/${bar}.js`).
+  Plugin: vite:dynamic-import-vars
+  File: /Users/joeturnerlin/Code/coil/tests/mac-ai.test.ts
+ ✓ src/lib/frameworks/validate.test.ts (16 tests) 2ms
+stderr | tests/fountain-language.test.ts > Fountain StreamParser > parses title page before ===
+Unknown highlighting tag title-page-key
+Unknown highlighting tag page-break
+
+stderr | tests/fountain-language.test.ts > Fountain StreamParser > parses scene headings
+Unknown highlighting tag scene-heading
+
+stderr | tests/fountain-language.test.ts > Fountain StreamParser > parses character names
+Unknown highlighting tag dialogue
+
+stderr | tests/fountain-language.test.ts > Fountain StreamParser > parses parentheticals
+Unknown highlighting tag parenthetical
+
+stderr | tests/fountain-language.test.ts > Fountain StreamParser > parses transitions
+Unknown highlighting tag transition
+
+stderr | tests/fountain-language.test.ts > Fountain StreamParser > parses episode boundaries
+Unknown highlighting tag episode-boundary
+
+stderr | tests/fountain-language.test.ts > Fountain StreamParser > parses killbox sections
+Unknown highlighting tag killbox-section
+
+stderr | tests/fountain-language.test.ts > Fountain StreamParser > parses action lines
+Unknown highlighting tag action
+
+stderr | tests/fountain-language.test.ts > Fountain StreamParser > parses boneyard
+Unknown highlighting tag boneyard
+
+stderr | tests/fountain-language.test.ts > Fountain StreamParser > parses centered text
+Unknown highlighting tag centered-text
+
+ ✓ tests/fountain-language.test.ts (17 tests) 6ms
+ ✓ tests/mac-ai.test.ts (7 tests) 28ms
+ ✓ tests/anthropic-handlers.test.ts (10 tests) 7ms
+ ✓ tests/desktop-files.test.ts (2 tests) 53ms
+
+ Test Files  5 passed (5)
+      Tests  52 passed (52)
+   Start at  10:47:10
+   Duration  311ms (transform 174ms, setup 0ms, collect 305ms, tests 97ms, environment 0ms, prepare 162ms)
+
+
+> recoil-fountain-editor@0.1.0 build
+> tsc -b && vite build
+
+vite v6.4.1 building for production...
+transforming...
+✓ 1676 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                            0.47 kB │ gzip:   0.30 kB
+dist/assets/index-CAWgeih3.css            14.88 kB │ gzip:   4.25 kB
+dist/assets/highland-DOYWihKm.js           1.10 kB │ gzip:   0.56 kB
+dist/assets/sequence--TQ9hfsk.js           1.66 kB │ gzip:   0.60 kB
+dist/assets/story-structure-BpFjzeyk.js    1.75 kB │ gzip:   0.65 kB
+dist/assets/celtx-DHXVmspt.js              1.92 kB │ gzip:   0.96 kB
+dist/assets/writerduet-9ofjoEy_.js         2.00 kB │ gzip:   0.90 kB
+dist/assets/fadein-BHstWKxJ.js             2.39 kB │ gzip:   1.12 kB
+dist/assets/heros-journey-DAVLvYCV.js      2.47 kB │ gzip:   0.83 kB
+dist/assets/save-the-cat-W92hXvSf.js       2.93 kB │ gzip:   0.99 kB
+dist/assets/jszip.min-BTpkJzIx.js         97.54 kB │ gzip:  30.32 kB
+dist/assets/index-DnWPcW_e.js            830.36 kB │ gzip: 257.86 kB
+
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 1.30s
+
+> recoil-fountain-editor@0.1.0 package:mac
+> npm run build:desktop && electron-builder --mac --dir
+
+
+> recoil-fountain-editor@0.1.0 build:desktop
+> tsc -p tsconfig.desktop.json && node scripts/build-desktop.mjs
+
+  • electron-builder  version=26.15.3 os=27.0.0
+  • loaded configuration  file=package.json ("build" field)
+  • skipped dependencies rebuild  reason=npmRebuild is set to false
+  • packaging       platform=darwin arch=arm64 electron=44.4.5 appOutDir=release/mac-arm64
+  • downloaded      label=electron progress=100%
+  • downloaded electron zip extracted successfully  output=/Users/joeturnerlin/Code/coil/release/mac-arm64
+  • searching for node modules  pm=npm searchDir=/Users/joeturnerlin/Code/coil
+  • duplicate dependency references  dependencies=["@codemirror/language@6.12.2","@codemirror/state@6.5.4","@codemirror/view@6.39.16","@codemirror/language@6.12.2","@codemirror/state@6.5.4","@codemirror/view@6.39.16","@codemirror/state@6.5.4","@codemirror/view@6.39.16","@codemirror/state@6.5.4","@codemirror/view@6.39.16","@codemirror/state@6.5.4","@tybys/wasm-util@0.10.4","@upstash/redis@1.37.0","@upstash/redis@1.37.0"]
+  • skipped macOS code signing  reason=identity explicitly is set to null
+
+> recoil-fountain-editor@0.1.0 test:desktop
+> playwright test -c playwright.desktop.config.ts
+
+[WebServer] (node:79751) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 6 tests using 1 worker
+
+(node:79753) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:79753) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+PARITY {"width":1280,"height":800,"differentPixels":308,"ratio":0.00030078125,"maximumRatio":0.0005,"pixelmatchThreshold":0.01,"includeAA":false,"colorProfile":"srgb","maximumAccentChannelDelta":1,"accents":[{"rgb":[0,240,255],"samples":480,"maxChannelDelta":0},{"rgb":[232,160,64],"samples":435,"maxChannelDelta":0}]}
+AI: Rewrite and Analyze reached the shared local handlers; both requested claude-fable-5-1 with the Settings key.
+DIRECT_EXEC: before-quit > will-quit > quit observed; own child cleaned up by harness.
+  ✓  1 tests/desktop.spec.ts:87:1 › packaged app matches web pixels and executes native Open, Rewrite and Analyze (3.0s)
+DIRECT_EXEC: before-quit > will-quit > quit observed; own child cleaned up by harness.
+DIRECT_EXEC: before-quit > will-quit > quit observed; own child cleaned up by harness.
+NATIVE: open-file event, File > Open/Save/Save As/Export, and remembered window bounds passed.
+  ✓  2 tests/desktop.spec.ts:165:1 › OS file events, Save/Save As/Export and window state work (2.5s)
+SECURITY: healthy no-cors control resolves; renderer reports connect-src violation; main session reports ERR_BLOCKED_BY_CLIENT; removing webRequest guard restores access.
+DIRECT_EXEC: before-quit > will-quit > quit observed; own child cleaned up by harness.
+  ✓  3 tests/desktop.spec.ts:216:1 › desktop refuses remote content, opens external links in the browser and migrates stale models without losing keys (998ms)
+NATIVE: File > Open recreates the closed window and loads the script.
+DIRECT_EXEC: before-quit > will-quit > quit observed; own child cleaned up by harness.
+  ✓  4 tests/desktop.spec.ts:284:1 › File > Open recreates the editor after closing the last window (1.1s)
+NATIVE_COLOR: LaunchServices with sRGB pinned at process launch rendered 3434 exact cyan pixels.
+LAUNCHSERVICES: pid=79846; before-quit > will-quit > quit; process gone in 270ms; no forced exit.
+DURABILITY 1/5: complete autosaved document and bounds restored after LaunchServices quit/relaunch; marker=Durability marker durability-Nu8SJM cycle 1.
+LAUNCHSERVICES: pid=79895; before-quit > will-quit > quit; process gone in 132ms; no forced exit.
+DURABILITY 2/5: complete autosaved document and bounds restored after LaunchServices quit/relaunch; marker=Durability marker durability-Nu8SJM cycle 2.
+LAUNCHSERVICES: pid=79913; before-quit > will-quit > quit; process gone in 123ms; no forced exit.
+DURABILITY 3/5: complete autosaved document and bounds restored after LaunchServices quit/relaunch; marker=Durability marker durability-Nu8SJM cycle 3.
+LAUNCHSERVICES: pid=79948; before-quit > will-quit > quit; process gone in 126ms; no forced exit.
+DURABILITY 4/5: complete autosaved document and bounds restored after LaunchServices quit/relaunch; marker=Durability marker durability-Nu8SJM cycle 4.
+LAUNCHSERVICES: pid=79964; before-quit > will-quit > quit; process gone in 125ms; no forced exit.
+DURABILITY 5/5: complete autosaved document and bounds restored after LaunchServices quit/relaunch; marker=Durability marker durability-Nu8SJM cycle 5.
+LAUNCHSERVICES: pid=80004; before-quit > will-quit > quit; process gone in 272ms; no forced exit.
+  ✓  5 tests/desktop.spec.ts:299:1 › LaunchServices preserves normal autosaves and window bounds across five quit/relaunch cycles (20.1s)
+SINGLE_INSTANCE: second launch exited; existing owner opened .txt and restored its window.
+LAUNCHSERVICES: pid=80017; before-quit > will-quit > quit; process gone in 266ms; no forced exit.
+  ✓  6 tests/desktop.spec.ts:344:1 › a second instance forwards supported documents to the existing owner (1.4s)
+
+  6 passed (30.4s)
+
+Model ID audit:
+src/lib/models.ts:10:  { id: 'claude-fable-5-1', name: 'Claude Fable 5.1', provider: 'anthropic' },
+src/lib/models.ts:11:  { id: 'claude-opus-5-5', name: 'Claude Opus 5.5', provider: 'anthropic' },
+src/lib/models.ts:12:  { id: 'claude-sonnet-5', name: 'Claude Sonnet 5', provider: 'anthropic' },
+src/lib/models.ts:13:  { id: 'claude-haiku-4-5-20251001', name: 'Claude Haiku 4.5', provider: 'anthropic' },
+src/lib/models.ts:14:  { id: 'gpt-6-astra', name: 'GPT-6 Astra', provider: 'openai' },
+src/lib/models.ts:19:export const OPTIONAL_GOOGLE_MODEL: AIModel = { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', provider: 'google' }
+Array {
+    Dict {
+        CFBundleTypeName = Fountain Screenplay
+        CFBundleTypeExtensions = Array {
+            fountain
+        }
+        CFBundleTypeRole = Editor
+        LSHandlerRank = Default
+        CFBundleTypeIconFile = icon.icns
+    }
+}
+
+VERIFICATION PASSED
+App: release/mac-arm64/Coil.app

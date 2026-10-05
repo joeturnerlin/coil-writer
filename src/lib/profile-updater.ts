@@ -7,7 +7,9 @@
  */
 
 import { useCharacterStore } from '../store/character-store'
+import { useEditorStore } from '../store/editor-store'
 import { savePendingDelta } from './persistence'
+import { escapeRegex } from './regex'
 import type { CharacterProfile } from './voice-profile'
 
 export interface DeltaResult {
@@ -67,11 +69,22 @@ export async function applyProfileDelta(
     })
   }
 
-  await savePendingDelta(fileName, delta.characterName, originalText, acceptedText)
+  await savePendingDelta(
+    fileName,
+    delta.characterName,
+    originalText,
+    acceptedText,
+    useEditorStore.getState().documentId ?? undefined,
+  )
 }
 
+// Mirrors EditorPanel's context window: context = doc.slice(max(0, from - 500), ...)
+const CONTEXT_WINDOW = 500
+
+/** `selectionFrom` is the ABSOLUTE document offset; the context starts CONTEXT_WINDOW chars earlier (or at 0). */
 export function detectSpeakingCharacter(surroundingContext: string, selectionFrom: number): string | null {
-  const textBefore = surroundingContext.slice(0, Math.min(selectionFrom, surroundingContext.length))
+  const inContextFrom = Math.min(selectionFrom, CONTEXT_WINDOW)
+  const textBefore = surroundingContext.slice(0, Math.min(inContextFrom, surroundingContext.length))
   const lines = textBefore.split('\n')
 
   let passedBlank = false
@@ -95,8 +108,4 @@ export function detectSpeakingCharacter(surroundingContext: string, selectionFro
   }
 
   return null
-}
-
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }

@@ -2,6 +2,7 @@ import { computeTiming } from '../lib/page-timing'
 import { useEditorStore } from '../store/editor-store'
 import { useScriptStore } from '../store/script-store'
 import { useSubscriptionStore } from '../store/subscription-store'
+import { UsageReadout } from './UsageReadout'
 
 export function StatsBar() {
   const { fileName, cursorLine, stats } = useEditorStore()
@@ -13,7 +14,7 @@ export function StatsBar() {
   const remaining = remainingUses('rewrite')
 
   return (
-    <div
+    <footer
       className="flex items-center justify-between px-4 py-1"
       style={{
         background: 'var(--bg-secondary)',
@@ -24,7 +25,11 @@ export function StatsBar() {
         fontWeight: 500,
       }}
     >
-      <div className="flex items-center gap-4">{fileName && <span>{fileName}</span>}</div>
+      <div className="flex items-center gap-4">
+        {fileName && <span>{fileName}</span>}
+        <SaveStatus />
+        <UsageReadout />
+      </div>
       <div className="flex items-center gap-4">
         {cursorLine > 0 && <span>Line {cursorLine}</span>}
         {stats && (
@@ -44,6 +49,24 @@ export function StatsBar() {
           </span>
         )}
       </div>
-    </div>
+    </footer>
   )
+}
+
+/** Autosave state: 'Saved' only after IndexedDB has committed the write. */
+function SaveStatus() {
+  const saveStatus = useEditorStore((s) => s.saveStatus)
+  const lastSavedAt = useEditorStore((s) => s.lastSavedAt)
+  const saveError = useEditorStore((s) => s.saveError)
+  if (saveStatus === 'failed') {
+    return (
+      <span style={{ color: '#ef5350' }} title={saveError ?? undefined}>
+        Autosave failed, retrying
+      </span>
+    )
+  }
+  if (saveStatus === 'saving') return <span>Saving…</span>
+  if (!lastSavedAt) return null
+  const time = new Date(lastSavedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return <span title={`Saved on this device at ${time}`}>Saved {time}</span>
 }

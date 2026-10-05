@@ -125,7 +125,7 @@ export function AnnotationPopup({ selection, position, onClose, onAIRewrite }: A
     handleClose()
   }
 
-  const truncatedText = displayText.length > 100 ? displayText.slice(0, 100) + '...' : displayText
+  const truncatedText = displayText.length > 100 ? `${displayText.slice(0, 100)}...` : displayText
 
   const inputStyle: React.CSSProperties = {
     width: '100%',

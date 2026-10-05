@@ -10,7 +10,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "biome check src/",
-    "format": "biome format --write src/"
+    "format": "biome format --write src/",
+    "build:desktop": "tsc -p tsconfig.desktop.json && node scripts/build-desktop.mjs",
+    "package:mac": "npm run build:desktop && electron-builder --mac --dir",
+    "package:mas": "node scripts/package-mas.mjs",
+    "package:mas-dev": "node scripts/package-mas.mjs dev",
+    "test:desktop": "playwright test -c playwright.desktop.config.ts"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.0",
@@ -33,12 +38,84 @@
     "@playwright/test": "^1.58.2",
     "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^25.3.5",
+    "@types/pixelmatch": "^5.2.6",
+    "@types/pngjs": "^6.0.5",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vercel/node": "^16.0.1",
     "@vitejs/plugin-react": "^4.3.0",
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "fake-indexeddb": "^6.2.5",
+    "pixelmatch": "^7.2.0",
+    "pngjs": "^7.0.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.6.0",
     "vite": "^6.0.0",
     "vitest": "^3.0.0"
+  },
+  "main": "dist-desktop/main.cjs",
+  "description": "Coil Fountain screenplay editor",
+  "author": "Coil",
+  "build": {
+    "appId": "art.coil.writer",
+    "productName": "Coil",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-desktop/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "identity": null,
+      "target": "dir",
+      "extendInfo": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDocumentTypes": [
+          {
+            "CFBundleTypeName": "Fountain Screenplay",
+            "CFBundleTypeRole": "Editor",
+            "CFBundleTypeIconFile": "icon.icns",
+            "LSHandlerRank": "Default",
+            "CFBundleTypeExtensions": [
+              "fountain"
+            ],
+            "LSItemContentTypes": [
+              "art.coil.writer.fountain"
+            ]
+          }
+        ],
+        "UTExportedTypeDeclarations": [
+          {
+            "UTTypeIdentifier": "art.coil.writer.fountain",
+            "UTTypeDescription": "Fountain Screenplay",
+            "UTTypeConformsTo": [
+              "public.plain-text"
+            ],
+            "UTTypeTagSpecification": {
+              "public.filename-extension": [
+                "fountain"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "mas": {
+      "identity": "SET-VIA-npm-run-package:mas (see NOTES-MAS.md)",
+      "type": "distribution",
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mas.plist",
+      "entitlementsInherit": "build/entitlements.mas.inherit.plist",
+      "bundleVersion": "1"
+    },
+    "npmRebuild": false,
+    "copyright": "Copyright \u00a9 2026 Joseph Lin"
   }
 }

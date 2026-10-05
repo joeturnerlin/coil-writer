@@ -80,7 +80,7 @@ export function ConversionWarnings({ warnings, format, onDismiss }: ConversionWa
         <div style={{ marginTop: '8px', maxHeight: '200px', overflowY: 'auto' }}>
           {warnings.map((w, i) => (
             <div
-              key={i}
+              key={`${w.message}:${i}`}
               style={{
                 padding: '4px 0',
                 color: w.severity === 'error' ? '#f87171' : w.severity === 'warning' ? '#fbbf24' : 'var(--text-muted)',

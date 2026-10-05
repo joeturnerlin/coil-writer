@@ -1,14 +1,18 @@
 /**
  * Vercel Serverless Function — Script Analysis Proxy
  *
- * Proxies analysis requests to Gemini using server-side API key.
- * Used for "try free" mode when user has no Gemini key.
+ * Proxies analysis requests to the shared default using the user key or web server key.
+ * Desktop uses user keys only.
  *
  * NOTE: This is a Serverless Function (NOT Edge) because analysis
  * can take 15-30 seconds, exceeding Edge's 25s timeout.
  */
 
 import type { VercelRequest, VercelResponse } from '@vercel/node'
+import { DEFAULT_MODEL } from '../src/lib/models'
+import { parseAnthropicUsage } from '../src/lib/usage'
+import { extractAnthropicText, requestAnthropic } from './anthropic'
+import { applyTesterToken } from './tester'
 
 export const config = {
   maxDuration: 60,
@@ -26,32 +30,38 @@ Rules:
    - 7+ characters: Triage. Only profile characters with 5+ lines of dialogue. Group minor characters under ENSEMBLE_DEFAULT.
 5. Stay under 4000 tokens total output.`
 
+// Keep the Vercel Node contract and timeout; desktop calls this same request implementation.
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-    return res.status(200).end()
-  }
+  const response = await handleAnalysis(new Request('https://coil.local/api/analyze', {
+    method: req.method,
+    ...(req.method === 'POST' ? { body: JSON.stringify(req.body) } : {}),
+  }))
+  response.headers.forEach((value, key) => res.setHeader(key, value))
+  if (req.method === 'OPTIONS') return res.status(response.status).end()
+  return res.status(response.status).json(await response.json())
+}
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' })
-  }
-
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) {
-    return res.status(500).json({ error: 'No Gemini API key configured on server' })
-  }
-
-  const { scriptContent } = req.body
+export async function handleAnalysis(req: Request): Promise<Response> {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: {
+    'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+  } })
+  if (req.method !== 'POST') return Response.json({ error: 'Method not allowed' }, { status: 405 })
+  let body
+  try { body = await req.json() } catch { return Response.json({ error: 'Invalid JSON' }, { status: 400 }) }
+  const { scriptContent } = body
   if (!scriptContent || typeof scriptContent !== 'string') {
-    return res.status(400).json({ error: 'Missing scriptContent field' })
+    return Response.json({ error: 'Missing scriptContent field' }, { status: 400 })
   }
+  const denied = applyTesterToken(body)
+  if (denied) return denied
+  const apiKey = body.apiKey
+  if (!apiKey) return Response.json({ error: 'No Anthropic API key. Add one in Settings.' }, { status: 400 })
 
   // Rough token estimate — reject if too large
   const estimatedTokens = Math.ceil(scriptContent.length / 4)
   if (estimatedTokens > 900000) {
-    return res.status(400).json({ error: 'Script too large for analysis. Maximum ~900K tokens.' })
+    return Response.json({ error: 'Script too large for analysis. Maximum ~900K tokens.' }, { status: 400 })
   }
 
   const userPrompt = `Analyze the following screenplay and return a JSON voice profile for each character.
@@ -75,37 +85,13 @@ ${scriptContent}
 </screenplay>`
 
   try {
-    const geminiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: ANALYSIS_SYSTEM_PROMPT }] },
-          contents: [{ parts: [{ text: userPrompt }] }],
-          generationConfig: {
-            maxOutputTokens: 16384,
-            responseMimeType: 'application/json',
-          },
-        }),
-      },
-    )
-
-    if (!geminiRes.ok) {
-      const err = await geminiRes.text()
-      return res.status(geminiRes.status).json({ error: `Gemini ${geminiRes.status}: ${err}` })
-    }
-
-    const data = await geminiRes.json()
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text
-
-    if (!text) {
-      return res.status(502).json({ error: 'Empty response from Gemini' })
-    }
-
-    return res.status(200).json({ text })
+    const response = await requestAnthropic(ANALYSIS_SYSTEM_PROMPT, userPrompt, DEFAULT_MODEL.id, 16384, apiKey, req.signal)
+    const data = await response.json()
+    if (!response.ok) return Response.json({ error: `Anthropic ${response.status}: ${JSON.stringify(data)}` }, { status: response.status })
+    const text = extractAnthropicText(data, true)
+    if (!text) return Response.json({ error: 'Empty response from Anthropic' }, { status: 502 })
+    return Response.json({ text, usage: parseAnthropicUsage(data) })
   } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error'
-    return res.status(502).json({ error: message })
+    return Response.json({ error: err instanceof Error ? err.message : 'Unknown error' }, { status: 502 })
   }
 }

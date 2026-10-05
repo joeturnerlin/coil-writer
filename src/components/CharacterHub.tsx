@@ -1,5 +1,6 @@
 import { X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { jumpTo } from '../editor/navigation'
 import { setSubtextFlags } from '../editor/subtext-decorations'
 import { type ContinuityIssue, type ContinuityResult, checkContinuity } from '../lib/continuity-check'
 import type { SubtextFlag } from '../lib/subtext-analysis'
@@ -67,10 +68,7 @@ function SubtextCard({ flag, sceneFrom }: { flag: SubtextFlag; sceneFrom: number
     const lineNum = sceneFrom > 0 ? sceneFrom + flag.lineNumber - 1 : flag.lineNumber
     if (lineNum < 1 || lineNum > view.state.doc.lines) return
     const line = view.state.doc.line(lineNum)
-    view.dispatch({ selection: { anchor: line.from } })
-    const block = view.lineBlockAt(line.from)
-    view.scrollDOM.scrollTo({ top: block.top - 40, behavior: 'smooth' })
-    view.focus()
+    jumpTo(view, line.from, 40)
   }
 
   return (
@@ -166,10 +164,7 @@ function ContinuityCard({ issue }: { issue: ContinuityIssue }) {
     if (!scene) return
     const view = useEditorStore.getState().viewRef?.current
     if (!view) return
-    view.dispatch({ selection: { anchor: scene.from } })
-    const block = view.lineBlockAt(scene.from)
-    view.scrollDOM.scrollTo({ top: block.top - 40, behavior: 'smooth' })
-    view.focus()
+    jumpTo(view, scene.from, 40)
   }
 
   return (

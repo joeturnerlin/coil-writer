@@ -1,5 +1,6 @@
 import { ChevronLeft } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
+import { jumpTo, onEditorScroll, topVisiblePos } from '../editor/navigation'
 import type { Episode } from '../editor/types'
 import { useAnnotationStore } from '../store/annotation-store'
 import { useEditorStore } from '../store/editor-store'
@@ -63,9 +64,7 @@ export function EpisodeNavigator() {
 
     const updateFromScroll = () => {
       // Use lineBlockAtHeight to get the document position at the top of the visible area
-      const scrollTop = view.scrollDOM.scrollTop
-      const topBlock = view.lineBlockAtHeight(scrollTop)
-      const topPos = topBlock.from
+      const topPos = topVisiblePos(view)
       if (isSceneMode) {
         let found = false
         for (let i = scenes.length - 1; i >= 0; i--) {
@@ -90,9 +89,7 @@ export function EpisodeNavigator() {
     }
 
     updateFromScroll()
-    const scroller = view.scrollDOM
-    scroller.addEventListener('scroll', updateFromScroll, { passive: true })
-    return () => scroller.removeEventListener('scroll', updateFromScroll)
+    return onEditorScroll(updateFromScroll)
   }, [viewRef, episodes, scenes, isSceneMode])
 
   // Count annotations per episode
@@ -112,10 +109,7 @@ export function EpisodeNavigator() {
   const scrollToPosition = (pos: number) => {
     const view = viewRef?.current
     if (!view) return
-    view.dispatch({ selection: { anchor: pos } })
-    const lineBlock = view.lineBlockAt(pos)
-    view.scrollDOM.scrollTo({ top: lineBlock.top - 10, behavior: 'smooth' })
-    view.focus()
+    jumpTo(view, pos)
   }
 
   return (

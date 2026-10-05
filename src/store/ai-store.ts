@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { AIProvider, RewriteSuggestion } from '../lib/ai-provider'
+import { DEFAULT_COMPARISON_MODEL, DEFAULT_MODEL, currentModel } from '../lib/models'
 import type { AnalysisPhase } from '../lib/script-analysis'
 import type { SubtextResult } from '../lib/subtext-analysis'
 import type { VoiceProfile } from '../lib/voice-profile'
@@ -83,15 +84,15 @@ interface AIState {
 export const useAIStore = create<AIState>()(
   persist(
     (set) => ({
-      provider: 'google',
-      model: 'gemini-2.5-pro',
+      provider: DEFAULT_MODEL.provider,
+      model: DEFAULT_MODEL.id,
       apiKeys: { anthropic: '', openai: '', google: '' },
 
       comparisonEnabled: false,
-      comparisonProviderA: 'google',
-      comparisonModelA: 'gemini-2.5-pro',
-      comparisonProviderB: 'anthropic',
-      comparisonModelB: 'claude-sonnet-4-20250514',
+      comparisonProviderA: DEFAULT_MODEL.provider,
+      comparisonModelA: DEFAULT_MODEL.id,
+      comparisonProviderB: DEFAULT_COMPARISON_MODEL.provider,
+      comparisonModelB: DEFAULT_COMPARISON_MODEL.id,
       modelPreferences: {},
 
       isLoading: false,
@@ -179,6 +180,24 @@ export const useAIStore = create<AIState>()(
     }),
     {
       name: 'recoil-fountain-ai',
+      merge: (persisted, current) => {
+        const saved = (persisted ?? {}) as Partial<AIState>
+        const googleKey = saved.apiKeys?.google ?? ''
+        const model = currentModel(saved.model, DEFAULT_MODEL, googleKey)
+        const a = currentModel(saved.comparisonModelA, DEFAULT_MODEL, googleKey)
+        const b = currentModel(saved.comparisonModelB, DEFAULT_COMPARISON_MODEL, googleKey)
+        return {
+          ...current,
+          ...saved,
+          apiKeys: { ...current.apiKeys, ...saved.apiKeys },
+          provider: model.provider,
+          model: model.id,
+          comparisonProviderA: a.provider,
+          comparisonModelA: a.id,
+          comparisonProviderB: b.provider,
+          comparisonModelB: b.id,
+        }
+      },
       partialize: (state) => ({
         provider: state.provider,
         model: state.model,

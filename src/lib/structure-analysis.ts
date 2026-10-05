@@ -6,6 +6,7 @@
  */
 
 import { dispatchAI } from './ai-dispatch'
+import { parseJsonLoose } from './json-parse'
 import type { SceneBlock } from './scene-model'
 
 export interface BeatMapping {
@@ -105,22 +106,7 @@ export async function analyzeStructure(
     throw new Error('Empty response from structure analysis')
   }
 
-  let parsed: { mappings: BeatMapping[] }
-  try {
-    parsed = JSON.parse(result.text)
-  } catch {
-    // Try to extract JSON from response if wrapped in markdown
-    const match = result.text.match(/\{[\s\S]*\}/)
-    if (match) {
-      try {
-        parsed = JSON.parse(match[0])
-      } catch {
-        throw new Error('Failed to parse structure analysis response')
-      }
-    } else {
-      throw new Error('Failed to parse structure analysis response')
-    }
-  }
+  const parsed = parseJsonLoose<{ mappings: BeatMapping[] }>(result.text, 'structure analysis')
 
   const mappings: BeatMapping[] = (parsed.mappings || []).map((m) => ({
     sceneIndex: m.sceneIndex,
