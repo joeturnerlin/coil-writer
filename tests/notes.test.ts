@@ -232,3 +232,15 @@ test('a context match in a different scene is not taken on a changed script', as
     false,
   )
 })
+
+test('conflicting heading-window and context candidates in one scene go to Needs placing', async () => {
+  const { resolveAnchor, anchorAnnotation } = await import('../src/lib/note-transfer')
+  const scene = `INT. HALL - NIGHT\n\nMARIA\nNo.\n\nShe waits by the door.\n\n${'Rain. '.repeat(120)}\nJON\nNo.\n\nHe waits by the window.\n`
+  const from = scene.indexOf('No.')
+  const anchor = anchorAnnotation({ id: 'h', from, to: from + 3, selectedText: 'No.' } as never, scene)
+  const changed = scene
+    .replace('She waits by the door.', 'She waits by the wall.')
+    .replace('He waits by the window.', 'She waits by the door.')
+  const r = resolveAnchor(anchor, from, from + 3, 'No.', changed, true)
+  expect(r.confidence === 'fuzzy' && r.from > from + 100).toBe(false)
+})

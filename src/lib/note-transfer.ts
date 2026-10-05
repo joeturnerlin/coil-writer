@@ -164,6 +164,9 @@ export function resolveAnchor(
     confidence,
   })
   const ambiguous = new Set<number>()
+  // Changed-script imports: heading-window candidates that were found but not corroborated. A different context
+  // match must not silently override them — the conflict goes to Needs placing.
+  let rejectedHeading: number[] = []
 
   // ── Step 2: Heading remap — every occurrence of the heading, text must be unique across their windows ──
   if (anchor.anchorHeading) {
@@ -174,6 +177,7 @@ export function resolveAnchor(
     }
     // On a changed script a lone in-window hit can still be the wrong copy of a repeated phrase (another copy may sit
     // past the window): unless the phrase is unique in the whole script, the saved context must also agree there.
+    if (requireCorroboration) rejectedHeading = [...found]
     if (found.size === 1) {
       const at = [...found][0]
       if (
@@ -220,7 +224,11 @@ export function resolveAnchor(
         }
       }
     }
-    if (candidates.size === 1) return hit([...candidates][0], 'fuzzy')
+    if (candidates.size === 1) {
+      const only = [...candidates][0]
+      if (rejectedHeading.length > 0 && !rejectedHeading.includes(only)) return orphan([...rejectedHeading, only])
+      return hit(only, 'fuzzy')
+    }
     for (const i of candidates) ambiguous.add(i)
   }
 
