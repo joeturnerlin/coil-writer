@@ -25,7 +25,8 @@ interface SettingsState {
   fontSize: number
   zoomLevel: number
   showEpisodeNav: boolean
-  leftPanelWidth: number
+  /** Dragged width in px; null = auto-fit to the longest scene heading. */
+  leftPanelWidth: number | null
   editorMode: EditorMode
   showAnnotations: boolean
   showProofread: boolean
@@ -47,7 +48,7 @@ interface SettingsState {
   zoomOut: () => void
   resetZoom: () => void
   toggleEpisodeNav: () => void
-  setLeftPanelWidth: (width: number) => void
+  setLeftPanelWidth: (width: number | null) => void
   setEditorMode: (mode: EditorMode) => void
   toggleAnnotations: () => void
   toggleProofread: () => void
@@ -66,6 +67,39 @@ const PRESET_IDS: PresetId[] = ['recoil', 'muted', 'light']
 
 applyPreset(getPreset('recoil'))
 
+function migrateLegacy(persisted: unknown, version: number): unknown {
+  const state = persisted as Record<string, unknown>
+  if (version === 0) {
+    return { ...state, fontSize: 16, zoomLevel: 120 }
+  }
+  if (version === 1) {
+    // Migrate 'edit' -> 'write', 'annotate' -> 'analyze'
+    const mode = state.editorMode
+    const newMode = mode === 'edit' ? 'write' : mode === 'annotate' ? 'analyze' : mode
+    return {
+      ...state,
+      editorMode: newMode,
+      activeOverlay: 'none',
+      structureFramework: 'save-the-cat',
+      activeLeftTab: 'structure',
+      onboardingComplete: false,
+    }
+  }
+  if (version === 2) {
+    // v3 adds custom colors; every existing field (incl. leftPanelWidth) is kept as-is.
+    return { ...state, customDraft: null, draftBase: 'recoil', customSlots: EMPTY_SLOTS }
+  }
+  return persisted as SettingsState
+}
+
+/** v4: leftPanelWidth becomes number | null (null = auto-fit). A dragged number is kept; the old 180 default (never dragged) becomes auto. */
+export function migrateSettings(persisted: unknown, version: number): unknown {
+  const migrated = migrateLegacy(persisted, version) as Record<string, unknown>
+  if (version >= 4) return migrated
+  const w = migrated.leftPanelWidth
+  return { ...migrated, leftPanelWidth: typeof w === 'number' && w !== LEFT_PANEL_DEFAULT ? w : null }
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set) => ({
@@ -77,7 +111,7 @@ export const useSettingsStore = create<SettingsState>()(
       fontSize: 16,
       zoomLevel: 120,
       showEpisodeNav: true,
-      leftPanelWidth: LEFT_PANEL_DEFAULT,
+      leftPanelWidth: null,
       editorMode: 'write' as EditorMode,
       showAnnotations: false,
       showProofread: false,
@@ -134,7 +168,9 @@ export const useSettingsStore = create<SettingsState>()(
       resetZoom: () => set({ zoomLevel: 120 }),
       toggleEpisodeNav: () => set((s) => ({ showEpisodeNav: !s.showEpisodeNav })),
       setLeftPanelWidth: (width) =>
-        set({ leftPanelWidth: Math.round(Math.max(LEFT_PANEL_MIN, Math.min(LEFT_PANEL_MAX, width))) }),
+        set({
+          leftPanelWidth: width === null ? null : Math.round(Math.max(LEFT_PANEL_MIN, Math.min(LEFT_PANEL_MAX, width))),
+        }),
       setEditorMode: (editorMode) =>
         set({
           editorMode,
@@ -150,31 +186,8 @@ export const useSettingsStore = create<SettingsState>()(
     }),
     {
       name: 'coil-settings-v3',
-      version: 3,
-      migrate: (persisted, version) => {
-        const state = persisted as Record<string, unknown>
-        if (version === 0) {
-          return { ...state, fontSize: 16, zoomLevel: 120 }
-        }
-        if (version === 1) {
-          // Migrate 'edit' -> 'write', 'annotate' -> 'analyze'
-          const mode = state.editorMode
-          const newMode = mode === 'edit' ? 'write' : mode === 'annotate' ? 'analyze' : mode
-          return {
-            ...state,
-            editorMode: newMode,
-            activeOverlay: 'none',
-            structureFramework: 'save-the-cat',
-            activeLeftTab: 'structure',
-            onboardingComplete: false,
-          }
-        }
-        if (version === 2) {
-          // v3 adds custom colors; every existing field (incl. leftPanelWidth) is kept as-is.
-          return { ...state, customDraft: null, draftBase: 'recoil', customSlots: EMPTY_SLOTS }
-        }
-        return persisted as SettingsState
-      },
+      version: 4,
+      migrate: migrateSettings,
       onRehydrateStorage: () => {
         return (state?: SettingsState) => {
           if (state) {

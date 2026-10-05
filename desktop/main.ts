@@ -54,9 +54,15 @@ async function fileKeyOf(filePath: string) {
 async function readDocument(filePath: string) {
   if (!filters[0].extensions.includes(extname(filePath).slice(1).toLowerCase())) throw new Error('Unsupported screenplay format')
   const buffer = await readFile(filePath)
+  rememberRecent(filePath)
   const documentId = randomUUID()
   documents.set(documentId, filePath)
   return { documentId, fileKey: await fileKeyOf(filePath), name: basename(filePath), data: buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) }
+}
+// macOS Open Recent: the Dock/menu list only ever holds real paths of documents this app opened or saved.
+// Choosing an item fires app 'open-file', which runs through openFiles -> readDocument (same extension check as the dialog).
+function rememberRecent(filePath: string) {
+  void realpath(filePath).then((real) => app.addRecentDocument(real)).catch(() => {})
 }
 function openFiles(files: string[]) {
   pendingFiles.push(...files)
@@ -180,6 +186,7 @@ if (ownsInstance) void app.whenReady().then(async () => {
       target = result.filePath
     }
     await writeFile(target, Buffer.from(input.data))
+    if (input.mode !== 'export') rememberRecent(target)
     const documentId = input.mode === 'save' && input.documentId ? input.documentId : randomUUID()
     if (input.mode === 'saveAs' && input.documentId) documents.delete(input.documentId)
     if (input.mode !== 'export') documents.set(documentId, target)
@@ -196,6 +203,7 @@ if (ownsInstance) void app.whenReady().then(async () => {
     { role: 'appMenu', label: 'Coil' },
     { label: 'File', submenu: [
       { id: 'open', label: 'Open…', accelerator: 'CmdOrCtrl+O', click: () => command('open') },
+      { role: 'recentDocuments', label: 'Open Recent', submenu: [{ role: 'clearRecentDocuments' }] },
       { id: 'save', label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => command('save') },
       { id: 'saveAs', label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => command('saveAs') },
       { label: 'Export', submenu: [
