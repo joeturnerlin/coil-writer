@@ -173,7 +173,11 @@ test('import into a CHANGED script: an offset-only match is not trusted (swapped
   expect(plan.placed.map((n) => n.from)).not.toContain(at)
   for (const n of plan.placed) expect(n.from).toBe(swapped.indexOf('No.'))
   // a heading-less, context-less anchor on a changed script is never trusted by offset alone
-  const bare = { format: 'coil-notes', revisionHash: 'x', annotations: [{ id: 'q', comment: 'c', selectedText: 'No.', from: at, to: at + 3 }] }
+  const bare = {
+    format: 'coil-notes',
+    revisionHash: 'x',
+    annotations: [{ id: 'q', comment: 'c', selectedText: 'No.', from: at, to: at + 3 }],
+  }
   const p2 = notes.planNoteImport(bare, original, new Set())
   expect(p2.placed).toHaveLength(0)
   expect(p2.needsPlacing).toHaveLength(1)
@@ -202,3 +206,15 @@ test('reopening a document before the notes debounce: the newer notes survive (n
   expect((await loadNotes('doc-r'))[0].note.comment).toBe('edited')
   off()
 }, 10000)
+
+test('a changed script with a repeated phrase and edited context goes to Needs placing, not the scene-top copy', async () => {
+  const { resolveAnchor, anchorAnnotation } = await import('../src/lib/note-transfer')
+  const head = 'INT. HALL - NIGHT\n\n'
+  const filler = 'Rain on the roof. '.repeat(40)
+  const original = `${head}MARIA\nNo.\n\n${filler}\nShe shuts the door.\n\nJON\nNo.\n`
+  const from = original.lastIndexOf('No.')
+  const anchor = anchorAnnotation({ id: 'n', from, to: from + 3, selectedText: 'No.' } as never, original)
+  const changed = original.replace('door', 'wall')
+  const r = resolveAnchor(anchor, from, from + 3, 'No.', changed, true)
+  expect(r.from === changed.indexOf('No.') && r.confidence === 'heading').toBe(false)
+})

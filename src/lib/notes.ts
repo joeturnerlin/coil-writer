@@ -173,9 +173,16 @@ export function planNoteImport(
 
 /** Apply an import to the open document. Returns the plan for the caller's summary line. */
 export async function importNotesFile(view: EditorView, file: unknown): Promise<ImportPlan> {
-  const content = view.state.doc.toString()
   const exported = (file as { revisionHash?: unknown } | null)?.revisionHash
-  const sameRevision = typeof exported === 'string' && exported === (await sha256Hex(content))
+  // Hashing is async: if the text changes meanwhile, hash again, so the offsets we place match the text we place into.
+  let content = view.state.doc.toString()
+  let hash = await sha256Hex(content)
+  for (let tries = 0; view.state.doc.toString() !== content && tries < 3; tries++) {
+    content = view.state.doc.toString()
+    hash = await sha256Hex(content)
+  }
+  if (view.state.doc.toString() !== content) throw new Error('The script kept changing during import. Try again.')
+  const sameRevision = typeof exported === 'string' && exported === hash
   const store = useAnnotationStore.getState()
   const ids = new Set([...view.state.field(annotationField).annotations, ...store.needsPlacing].map((n) => n.id))
   const plan = planNoteImport(file, content, ids, sameRevision)

@@ -172,7 +172,18 @@ export function resolveAnchor(
       const end = Math.min(content.length, h + anchor.anchorHeading.length + 500)
       for (const i of allIndexesOf(content, selectedText, h, end)) found.add(i)
     }
-    if (found.size === 1) return hit([...found][0], 'heading')
+    // On a changed script a lone in-window hit can still be the wrong copy of a repeated phrase (another copy may sit
+    // past the window): unless the phrase is unique in the whole script, the saved context must also agree there.
+    if (found.size === 1) {
+      const at = [...found][0]
+      if (
+        !requireCorroboration ||
+        allIndexesOf(content, selectedText).length === 1 ||
+        offsetCorroborated(anchor, at, at + selectedText.length, content)
+      ) {
+        return hit(at, 'heading')
+      }
+    }
     for (const i of found) ambiguous.add(i)
   }
 
