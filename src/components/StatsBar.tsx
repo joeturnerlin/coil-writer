@@ -33,7 +33,7 @@ export function StatsBar() {
         <span style={{ flexShrink: 0 }}>
           <SaveStatus />
         </span>
-        <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <span style={{ minWidth: 0, display: 'flex' }}>
           <UsageReadout />
         </span>
       </div>

@@ -9,6 +9,8 @@ import { ContextualLeftPanel } from './ContextualLeftPanel'
  */
 export function LeftPanelShell() {
   const { showEpisodeNav, leftPanelWidth, setLeftPanelWidth } = useSettingsStore()
+  // Never squeeze the editor: leave room for a right panel (340px) plus a 480px editor; the stored width is kept.
+  const shown = `min(${leftPanelWidth}px, max(160px, calc(100vw - 820px)))`
   const [dragging, setDragging] = useState(false)
   const [hover, setHover] = useState(false)
   const drag = useRef<{ startX: number; startWidth: number } | null>(null)
@@ -24,12 +26,12 @@ export function LeftPanelShell() {
         flexShrink: 0,
         overflow: 'hidden',
         display: 'flex',
-        width: showEpisodeNav ? leftPanelWidth : 0,
+        width: showEpisodeNav ? shown : 0,
         visibility: showEpisodeNav ? 'visible' : 'hidden',
       }}
     >
       {/* Row flex so the panel stretches to the full column height (it did as a direct child before the shell) */}
-      <div style={{ width: leftPanelWidth, flexShrink: 0, display: 'flex' }}>
+      <div style={{ width: shown, flexShrink: 0, display: 'flex' }}>
         <ContextualLeftPanel />
       </div>
       <div
