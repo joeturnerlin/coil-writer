@@ -32,7 +32,9 @@ export function EditorPanel(_props: EditorPanelProps) {
 
   // Latest doc awaiting the debounced autosave (null = nothing pending). Carries the document it
   // belongs to, so a file switch between edit and flush can't write one script under another's id.
-  const pendingSaveRef = useRef<{ doc: string; documentId: string; fileName: string } | null>(null)
+  const pendingSaveRef = useRef<{ doc: string; documentId: string; fileName: string; fileKey: string | null } | null>(
+    null,
+  )
 
   const flushSave = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
@@ -48,7 +50,8 @@ export function EditorPanel(_props: EditorPanelProps) {
       pending.documentId,
       pending.fileName,
       pending.doc,
-      documentId === pending.documentId ? fileKey : null,
+      // A switch-triggered flush belongs to the OUTGOING document: keep the key it had when edited.
+      documentId === pending.documentId ? fileKey : pending.fileKey,
     ).then(
       () => {
         if (pendingSaveRef.current === null) setSaveStatus('saved')
@@ -164,7 +167,12 @@ export function EditorPanel(_props: EditorPanelProps) {
         // A different document's edit still pending: write it out under its own id first
         if (pendingSaveRef.current && pendingSaveRef.current.documentId !== documentId) flushSave()
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-        pendingSaveRef.current = { doc, documentId, fileName: currentFileName }
+        pendingSaveRef.current = {
+          doc,
+          documentId,
+          fileName: currentFileName,
+          fileKey: useEditorStore.getState().fileKey,
+        }
         useEditorStore.getState().setSaveStatus('saving')
         saveTimerRef.current = setTimeout(flushSave, AUTOSAVE_INTERVAL_MS)
       }

@@ -152,7 +152,7 @@ describe('proofread store (item 8)', () => {
   test.each([
     [401, /needs your Anthropic API key/],
     [404, /isn't reachable from this build/],
-    [0, /You're offline; rule checks still ran/],
+    [0, /connection dropped; rule checks still ran. If the request had already been sent, it may have been charged/],
     [429, /Rate-limited; try again in a minute/],
     [500, /The check failed: boom/],
   ])('AI failure %s keeps the rule findings and maps the error', async (status, pattern) => {
@@ -196,5 +196,28 @@ describe('find panel (item 9)', () => {
     const rule = css.match(/\.coil-find-close\s*\{[^}]*\}/)?.[0] ?? ''
     expect(rule).not.toMatch(/position:\s*absolute/)
     expect(css.match(/body \.cm-panels \.coil-find \{[^}]*\}/)?.[0]).not.toMatch(/48px/)
+  })
+})
+
+describe('verifier: whole-line spelling quotes (calibration finding)', () => {
+  const SRC = ['INT. HANGAR - NIGHT', '', 'Sensor array spinning, monuted on four rotors.', '', 'Pink and deilberate.', ''].join('\n')
+
+  test('a whole-line quote narrows to the one near-miss word and is kept', () => {
+    const { kept } = run(SRC, [spell(3, 'Sensor array spinning, monuted on four rotors.', 'mounted')])
+    expect(kept).toHaveLength(1)
+    expect(kept[0].evidence[0].quote).toBe('monuted')
+    expect(kept[0].evidence[0].line).toBe(3)
+  })
+
+  test('a phrase with no near-miss word for the suggestion is dropped', () => {
+    const { kept, d } = run(SRC, [spell(3, 'Sensor array spinning, monuted on four rotors.', 'helicopter')])
+    expect(kept).toHaveLength(0)
+    expect(d['spelling-rule']).toBe(1)
+  })
+
+  test('a fabricated phrase is still dropped before narrowing', () => {
+    const { kept, d } = run(SRC, [spell(3, 'Sensor array spinning, monutted on five rotors.', 'mounted')])
+    expect(kept).toHaveLength(0)
+    expect(d['quote-not-found']).toBe(1)
   })
 })

@@ -272,7 +272,19 @@ export async function findDocumentByNameAndContent(fileName: string, content: st
 /**
  * Get the most recently saved document (for session recovery).
  */
-export async function getRecoveredDocument(): Promise<{
+// Concurrent startup callers (React StrictMode runs effects twice) share one recovery, so the emergency copy
+// consumed by the first call is what the second call sees too.
+let recovering: Promise<{ documentId: string; fileName: string; content: string } | null> | null = null
+export function getRecoveredDocument(): Promise<{ documentId: string; fileName: string; content: string } | null> {
+  if (!recovering) {
+    recovering = recoverDocument().finally(() => {
+      recovering = null
+    })
+  }
+  return recovering
+}
+
+async function recoverDocument(): Promise<{
   documentId: string
   fileName: string
   content: string

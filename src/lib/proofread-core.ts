@@ -85,10 +85,11 @@ Report only these categories:
 
 Rules:
 - Every finding MUST cite evidence: {"line": N, "quote": "..."} where N is a line number shown and quote is copied EXACTLY, character for character, from that line. Never paraphrase a quote. Cite only lines in this chunk.
-- "spelling" and "wrong-name": evidence[0] is the single word or name to change, exactly as written on that line. Put the corrected word in "suggestion" (one word).
+- "spelling" and "wrong-name": evidence[0].quote is ONLY the single word or name to change (not the whole line), exactly as written on that line. Put the corrected word in "suggestion" (one word).
 - "day-night" and "continuity-objective": cite at least two evidence entries on different lines (for example the slugline and the contradicting line).
 - If you are not certain, do not report it.
 
+Report at most 20 findings, the most certain first, and keep each claim under 20 words (longer output is cut off and lost).
 Respond with JSON only: {"findings":[{"category":"spelling|wrong-name|day-night|continuity-objective","claim":"one sentence","suggestion":"optional","evidence":[{"line":12,"quote":"exact text"}]}]}`
 
 export function factsBlock(index: ScriptIndex): string {

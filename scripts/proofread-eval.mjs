@@ -19,7 +19,9 @@ import { pathToFileURL } from 'node:url'
 
 const [file, nArg, seedArg, modelArg] = process.argv.slice(2)
 const key = process.env.COIL_EVAL_ANTHROPIC_KEY
-if (!file || !key) {
+// Alternative transport: the same Claude model via OpenRouter (COIL_EVAL_OPENROUTER_KEY)
+const orKey = process.env.COIL_EVAL_OPENROUTER_KEY
+if (!file || !(key || orKey)) {
   console.error('usage: COIL_EVAL_ANTHROPIC_KEY=... node scripts/proofread-eval.mjs <clean.fountain> [N] [SEED] [MODEL]')
   process.exit(2)
 }
@@ -46,7 +48,36 @@ await build({
 const P = await import(pathToFileURL(out).href)
 const model = modelArg ?? P.PROOFREAD_MODEL
 
-const call = async ({ systemPrompt, userPrompt, maxTokens, signal }) => {
+const callOpenRouter = async ({ systemPrompt, userPrompt, maxTokens, signal }) => {
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    method: 'POST',
+    signal,
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${orKey}` },
+    body: JSON.stringify({
+      model: `anthropic/${model}`,
+      // Low-balance OpenRouter accounts refuse large output reservations (402 in_flight_budget_exhausted).
+      max_tokens: Math.min(maxTokens, Number(process.env.COIL_EVAL_MAX_TOKENS ?? 1500)),
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(`OpenRouter ${res.status}: ${JSON.stringify(data)}`)
+  return {
+    text: data.choices?.[0]?.message?.content ?? '',
+    usage: { inputTokens: data.usage?.prompt_tokens ?? 0, outputTokens: data.usage?.completion_tokens ?? 0 },
+  }
+}
+
+const call = async (args) => {
+  if (!key) {
+    const r = await callOpenRouter(args)
+    if (process.env.COIL_EVAL_DEBUG) console.error('RAW', r.text)
+    return r
+  }
+  const { systemPrompt, userPrompt, maxTokens, signal } = args
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     signal,
@@ -181,7 +212,7 @@ console.log(
 console.log(`\nFALSE FINDINGS on UNMODIFIED file: ${base.findings.length}`)
 for (const f of base.findings) console.log(`  [${f.category}${f.severity === 'note' ? '/note' : ''}] L${f.evidence[0].line} ${f.claim}`)
 console.log(`\nVERIFIER dropped (injected run): ${JSON.stringify(mod.dropped)}`)
-console.log(`failed chunks: clean ${base.failedChunks}, injected ${mod.failedChunks}`)
+console.log(`failed chunks: clean ${base.failedChunks}, injected ${mod.failedChunks}${base.firstError || mod.firstError ? ` (first error: ${(base.firstError || mod.firstError).slice(0, 300)})` : ""}`)
 const u = {
   inputTokens: base.usage.inputTokens + mod.usage.inputTokens,
   outputTokens: base.usage.outputTokens + mod.usage.outputTokens,

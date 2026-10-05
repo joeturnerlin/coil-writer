@@ -44,7 +44,8 @@ export function hasProofreadKey(): boolean {
 export function friendlyProofreadError(message: string, status: number | null): string {
   if (status === 401) return NO_KEY_MESSAGE
   if (status === 404) return "The proofreading service isn't reachable from this build."
-  if (status === 0) return "You're offline; rule checks still ran."
+  if (status === 0)
+    return "You're offline or the connection dropped; rule checks still ran. If the request had already been sent, it may have been charged."
   if (status === 429) return 'Rate-limited; try again in a minute.'
   return `The check failed: ${message}`
 }

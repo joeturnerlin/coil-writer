@@ -234,3 +234,20 @@ describe('unload emergency copy', () => {
     expect((await getRecoveredDocument())?.content).toBe('NEWER')
   })
 })
+
+test('concurrent startup recoveries share one result (StrictMode double effect)', async () => {
+  const store = new Map<string, string>()
+  vi.stubGlobal('localStorage', {
+    getItem: (k: string) => store.get(k) ?? null,
+    setItem: (k: string, v: string) => void store.set(k, v),
+    removeItem: (k: string) => void store.delete(k),
+  })
+  const { saveToDB, getRecoveredDocument, stashUnsaved, db } = await import('../src/lib/persistence')
+  await db.documents.clear()
+  await saveToDB('doc-c', 'c.fountain', 'OLD')
+  await new Promise((r) => setTimeout(r, 5))
+  stashUnsaved({ documentId: 'doc-c', fileName: 'c.fountain', doc: 'NEW KEYSTROKES' })
+  const [a, b] = await Promise.all([getRecoveredDocument(), getRecoveredDocument()])
+  expect(a?.content).toBe('NEW KEYSTROKES')
+  expect(b?.content).toBe('NEW KEYSTROKES')
+})

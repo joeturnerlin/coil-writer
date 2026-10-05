@@ -1,4 +1,4 @@
-import { findingId, nameKey } from './proofread-tier0'
+import { editDistance, findingId, nameKey } from './proofread-tier0'
 import {
   type AICategory,
   AI_CATEGORIES,
@@ -144,6 +144,15 @@ export function verifyFindings(
     }
 
     if (category === 'spelling') {
+      // Models often quote the whole line. Narrow a verified phrase to the ONE word that is a near-miss of the
+      // suggested correction (e.g. 'monuted' for 'mounted'); zero or several candidates = drop. Still deterministic.
+      if (suggestion && TOKEN_RE.test(suggestion) && !TOKEN_RE.test(verified[0].quote)) {
+        const words = verified[0].quote.match(/[\p{L}][\p{L}'’-]*/gu) ?? []
+        const near = [...new Set(words)].filter(
+          (w) => w !== suggestion && editDistance(w.toLowerCase(), suggestion.toLowerCase()) <= 2,
+        )
+        if (near.length === 1) verified[0] = { ...verified[0], quote: near[0] }
+      }
       const tok = verified[0].quote
       if (
         !suggestion ||
