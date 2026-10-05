@@ -9,7 +9,8 @@ import { verifyFindings } from './proofread-verify'
 import { type ScriptIndex, buildScriptIndex, textAtLines } from './script-index'
 
 /** ~6k tokens of script per chunk at ~4 chars/token. */
-export const CHUNK_TARGET_CHARS = 24_000
+// ~9k chars keeps one chunk's request well under the hosted 60 s limit (24k chunks took >27 s on The Hike)
+export const CHUNK_TARGET_CHARS = 9_000
 export const PROOFREAD_CONCURRENCY = 2
 export const PROOFREAD_MAX_TOKENS = 4096
 

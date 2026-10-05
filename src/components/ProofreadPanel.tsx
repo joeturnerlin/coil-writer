@@ -27,9 +27,9 @@ const GROUPS: { category: ProofreadCategory; label: string }[] = [
 ]
 
 const btn = (primary = false, disabled = false): React.CSSProperties => ({
-  padding: '6px 14px',
-  fontSize: '18px',
-  fontFamily: 'inherit',
+  padding: '5px 12px',
+  fontSize: '11px',
+  fontFamily: "'JetBrains Mono', monospace",
   fontWeight: 600,
   borderRadius: 'var(--btn-radius)',
   cursor: disabled ? 'default' : 'pointer',
@@ -80,8 +80,9 @@ export function ProofreadPanel() {
         minHeight: 0,
         background: 'var(--bg-secondary)',
         borderLeft: '1px solid var(--border-color)',
-        fontFamily: "'Inter', system-ui, sans-serif",
-        fontSize: '18px',
+        // Panel body per DESIGN_SYSTEM.md: Inter 12px; header and buttons in JetBrains Mono like AnnotationsPanel
+        fontFamily: "'Inter', sans-serif",
+        fontSize: '12px',
         color: 'var(--text-primary)',
       }}
     >
@@ -94,8 +95,20 @@ export function ProofreadPanel() {
           borderBottom: '1px solid var(--border-color)',
         }}
       >
-        <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700 }}>
-          <SpellCheck size={18} /> Proofread
+        <span
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '10px',
+            fontFamily: "'JetBrains Mono', monospace",
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.15em',
+            color: 'var(--text-muted)',
+          }}
+        >
+          <SpellCheck size={14} /> Proofread
         </span>
         <button
           type="button"
@@ -103,7 +116,7 @@ export function ProofreadPanel() {
           onClick={toggleProofread}
           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex' }}
         >
-          <X size={18} />
+          <X size={14} />
         </button>
       </div>
 
@@ -119,7 +132,7 @@ export function ProofreadPanel() {
         {running ? (
           <>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Loader2 size={18} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" />
               {progress.total
                 ? `Checking chunk ${Math.min(progress.done + 1, progress.total)} of ${progress.total}`
                 : 'Starting'}
@@ -218,7 +231,7 @@ export function ProofreadPanel() {
                             padding: '4px 8px',
                             color: 'inherit',
                             fontFamily: 'inherit',
-                            fontSize: '18px',
+                            fontSize: '11px',
                             cursor: stale ? 'default' : 'pointer',
                           }}
                         >
