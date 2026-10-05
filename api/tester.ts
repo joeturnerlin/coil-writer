@@ -3,7 +3,9 @@ const PREFIX = 'coil_'
 
 export const isTesterToken = (key?: string): key is string => Boolean(key?.startsWith(PREFIX))
 
-/** Swaps a valid tester token in `body.apiKey` for the server's key; returns an error Response if it can't. */
+/** Swaps a valid tester token in `body.apiKey` for the server's key; returns an error Response if it can't.
+ *  Callers read `hasApiKey` before this, so tester calls skip the public per-IP quotas (10 rewrites/day, 1 continuity/30 days):
+ *  deliberate — the Anthropic workspace spend cap and token revocation are the limits for testers. */
 export function applyTesterToken(body: { provider?: string; apiKey?: string }): Response | null {
   if (!isTesterToken(body.apiKey)) return null
   const valid = (process.env.COIL_TESTER_TOKENS ?? '').split(',').map((t) => t.trim()).filter(Boolean)
