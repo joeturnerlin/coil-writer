@@ -214,6 +214,8 @@ export async function saveToDB(
   fileName: string,
   content: string,
   fileKey?: string | null,
+  /** Only fill the key if the stored row has none (a Save As may already have re-pointed it). */
+  keepExistingKey = false,
 ): Promise<void> {
   // One rw transaction so concurrent saves can't both see "no row" and each add one.
   await db.transaction('rw', db.documents, async () => {
@@ -224,7 +226,7 @@ export async function saveToDB(
         fileName,
         content,
         lastModified,
-        ...(fileKey ? { fileKey } : {}),
+        ...(fileKey && !(keepExistingKey && existing.fileKey) ? { fileKey } : {}),
       })
     } else {
       await db.documents.add({
@@ -291,12 +293,15 @@ async function recoverDocument(): Promise<{
 } | null> {
   const doc = await db.documents.orderBy('lastModified').last()
   // An emergency copy written synchronously at unload (reload/quit inside the autosave window) wins if newer.
-  const unsaved = takeUnsaved()
+  const unsaved = peekUnsaved()
   if (unsaved && (!doc || unsaved.at > doc.lastModified)) {
-    await saveToDB(unsaved.documentId, unsaved.fileName, unsaved.doc)
+    // The stash is removed only after the recovered text is committed (a failed write keeps it for the next try).
+    await saveToDB(unsaved.documentId, unsaved.fileName, unsaved.doc, unsaved.fileKey ?? null, true)
+    clearUnsaved()
     recoveredHint = { documentId: unsaved.documentId, fileName: unsaved.fileName, content: unsaved.doc }
     return { documentId: unsaved.documentId, fileName: unsaved.fileName, content: unsaved.doc }
   }
+  if (unsaved) clearUnsaved() // older than the saved copy: stale
   if (!doc) return null
   recoveredHint = { documentId: doc.documentId, fileName: doc.fileName, content: doc.content }
   return { documentId: doc.documentId, fileName: doc.fileName, content: doc.content }
@@ -307,6 +312,7 @@ interface UnsavedEdit {
   documentId: string
   fileName: string
   doc: string
+  fileKey?: string | null
   at: number
 }
 
@@ -319,13 +325,20 @@ export function stashUnsaved(edit: Omit<UnsavedEdit, 'at'>): void {
   }
 }
 
-function takeUnsaved(): UnsavedEdit | null {
+function peekUnsaved(): UnsavedEdit | null {
   try {
     const raw = localStorage.getItem(UNSAVED_KEY)
-    localStorage.removeItem(UNSAVED_KEY)
     return raw ? (JSON.parse(raw) as UnsavedEdit) : null
   } catch {
     return null
+  }
+}
+
+function clearUnsaved(): void {
+  try {
+    localStorage.removeItem(UNSAVED_KEY)
+  } catch {
+    // unavailable storage: nothing to clear
   }
 }
 

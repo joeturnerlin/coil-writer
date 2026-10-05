@@ -251,3 +251,37 @@ test('concurrent startup recoveries share one result (StrictMode double effect)'
   expect(a?.content).toBe('NEW KEYSTROKES')
   expect(b?.content).toBe('NEW KEYSTROKES')
 })
+
+describe('emergency copy durability (Astra round 3)', () => {
+  beforeEach(() => {
+    const store = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    })
+  })
+
+  test('a failed recovery write keeps the stash for the next attempt', async () => {
+    const persistence = await import('../src/lib/persistence')
+    await persistence.db.documents.clear()
+    persistence.stashUnsaved({ documentId: 'doc-f', fileName: 'f.fountain', doc: 'LATEST' })
+    const spy = vi.spyOn(persistence.db, 'transaction').mockRejectedValueOnce(new Error('QuotaExceededError'))
+    await expect(persistence.getRecoveredDocument()).rejects.toThrow('QuotaExceededError')
+    spy.mockRestore()
+    expect(localStorage.getItem('coil-unsaved-edit')).not.toBeNull()
+    expect((await persistence.getRecoveredDocument())?.content).toBe('LATEST')
+    expect(localStorage.getItem('coil-unsaved-edit')).toBeNull()
+  })
+
+  test('the recovered stash keeps its file key, and a Save As key is not overwritten', async () => {
+    const persistence = await import('../src/lib/persistence')
+    await persistence.db.documents.clear()
+    persistence.stashUnsaved({ documentId: 'doc-g', fileName: 'g.fountain', doc: 'TEXT', fileKey: 'key-g' })
+    await persistence.getRecoveredDocument()
+    expect((await persistence.findDocumentByFileKey('key-g'))?.documentId).toBe('doc-g')
+    await persistence.setDocumentFileKey('doc-g', 'key-saveas')
+    await persistence.saveToDB('doc-g', 'g.fountain', 'TEXT 2', 'key-g', true)
+    expect((await persistence.db.documents.where('documentId').equals('doc-g').first())?.fileKey).toBe('key-saveas')
+  })
+})

@@ -50,8 +50,10 @@ export function EditorPanel(_props: EditorPanelProps) {
       pending.documentId,
       pending.fileName,
       pending.doc,
-      // A switch-triggered flush belongs to the OUTGOING document: keep the key it had when edited.
+      // A switch-triggered flush belongs to the OUTGOING document: fill its edit-time key only if the stored row
+      // has none, so a Save As that already re-pointed it is not overwritten.
       documentId === pending.documentId ? fileKey : pending.fileKey,
+      documentId !== pending.documentId,
     ).then(
       () => {
         if (pendingSaveRef.current === null) setSaveStatus('saved')
