@@ -11,8 +11,6 @@ export const updateAnnotation = StateEffect.define<{ id: string; changes: Partia
 
 // ── Decoration for highlighted annotations ──
 
-const annotationMark = Decoration.mark({ class: 'cm-annotation-mark' })
-
 // ── StateField ──
 
 interface AnnotationFieldValue {
@@ -24,7 +22,9 @@ function buildDecorations(annotations: Annotation[]): DecorationSet {
   const ranges = annotations
     .filter((a) => a.from < a.to)
     .sort((a, b) => a.from - b.from || a.to - b.to)
-    .map((a) => annotationMark.range(a.from, a.to))
+    .map((a) =>
+      Decoration.mark({ class: 'cm-annotation-mark', attributes: { 'data-note-id': a.id } }).range(a.from, a.to),
+    )
   return Decoration.set(ranges)
 }
 

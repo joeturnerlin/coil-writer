@@ -110,4 +110,6 @@ export interface Annotation {
   anchorContext?: string
   anchorCharacter?: string
   fileName?: string
+  /** Who wrote the note (Settings: 'Your name (on notes)'). */
+  author?: string
 }

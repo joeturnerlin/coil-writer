@@ -5,6 +5,7 @@ import { fountainDarkTheme, fountainLightTheme } from '../editor/fountain-theme'
 import { buildRewriteSelection } from '../editor/rewrite-selection'
 import { subtextExtension } from '../editor/subtext-decorations'
 import { useCodeMirror } from '../editor/use-codemirror'
+import { installNotesPersistence, openNotesFor } from '../lib/notes-sync'
 import { AUTOSAVE_INTERVAL_MS, saveToDB, stashUnsaved } from '../lib/persistence'
 import { installVersionHistory } from '../lib/version-history'
 import { useAIStore } from '../store/ai-store'
@@ -13,13 +14,16 @@ import { useEditorStore } from '../store/editor-store'
 import { useScriptStore } from '../store/script-store'
 import { useSettingsStore } from '../store/settings-store'
 
+import { AnnotationPopup } from './AnnotationPopup'
+import { MarginNotes } from './MarginNotes'
+
 interface EditorPanelProps {
   focusMode: boolean
 }
 
 export function EditorPanel(_props: EditorPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null)
-  const { content, fileName, documentVersion, setStats, setCursorLine, updateContent } = useEditorStore()
+  const { content, fileName, documentVersion, documentId, setStats, setCursorLine, updateContent } = useEditorStore()
   const { theme, zoomLevel, editorMode } = useSettingsStore()
   const analysisStatus = useAIStore((s) => s.analysisState.status)
   const isAnalyzing = analysisStatus === 'sending' || analysisStatus === 'analyzing'
@@ -216,6 +220,28 @@ export function EditorPanel(_props: EditorPanelProps) {
     }
   }, [documentVersion, content, viewRef])
 
+  // Notes: persist changes, and (re)load this document's notes whenever a document is opened
+  useEffect(() => installNotesPersistence(), [])
+  // biome-ignore lint/correctness/useExhaustiveDependencies: documentVersion re-runs this when the same document is reopened
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view || !documentId) return
+    return openNotesFor(view, documentId)
+  }, [documentId, documentVersion, viewRef])
+
+  // Clicking a noted passage focuses its note (margin card + panel)
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+    const onClick = (e: MouseEvent) => {
+      const mark = (e.target as HTMLElement).closest?.('[data-note-id]')
+      // A click on a noted passage focuses its note; a click anywhere else in the script unfocuses
+      useAnnotationStore.getState().setSelectedId(mark?.getAttribute('data-note-id') ?? null)
+    }
+    container.addEventListener('click', onClick)
+    return () => container.removeEventListener('click', onClick)
+  }, [])
+
   // Also populate scene model on initial load (auto-recovery)
   useEffect(() => {
     if (content) {
@@ -313,6 +339,8 @@ export function EditorPanel(_props: EditorPanelProps) {
         <div ref={containerRef} />
       </div>
       {isAnalyzing && <div className="analysis-scanline" />}
+      <MarginNotes />
+      <AnnotationPopup />
     </div>
   )
 }

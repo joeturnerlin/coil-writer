@@ -112,6 +112,15 @@ function allIndexesOf(haystack: string, needle: string, start = 0, end = haystac
   return out
 }
 
+/** The saved heading is still the nearest one above `from`, and the saved ±50 chars still surround the text. */
+function offsetCorroborated(anchor: AnchorData, from: number, to: number, content: string): boolean {
+  if (!anchor.anchorHeading && !anchor.anchorContext) return false
+  const here = anchorAnnotation({ from, to } as Annotation, content)
+  if (anchor.anchorHeading && here.anchorHeading !== anchor.anchorHeading) return false
+  if (anchor.anchorContext && here.anchorContext !== anchor.anchorContext) return false
+  return true
+}
+
 /**
  * Resolve an anchor back to document positions.
  *
@@ -129,9 +138,16 @@ export function resolveAnchor(
   originalTo: number,
   selectedText: string,
   content: string,
+  /** The script is not the revision the anchor was saved against: an offset match alone proves nothing. */
+  requireCorroboration = false,
 ): ResolvedAnchor {
-  // ── Step 1: Exact match at original positions ──
-  if (originalFrom >= 0 && originalTo <= content.length && content.slice(originalFrom, originalTo) === selectedText) {
+  // ── Step 1: Exact match at original positions (on a changed script, only when heading AND context agree) ──
+  if (
+    originalFrom >= 0 &&
+    originalTo <= content.length &&
+    content.slice(originalFrom, originalTo) === selectedText &&
+    (!requireCorroboration || offsetCorroborated(anchor, originalFrom, originalTo, content))
+  ) {
     return { from: originalFrom, to: originalTo, confidence: 'exact' }
   }
   const orphan = (candidates?: number[]): ResolvedAnchor => ({
@@ -148,6 +164,9 @@ export function resolveAnchor(
     confidence,
   })
   const ambiguous = new Set<number>()
+  // Changed-script imports: heading-window candidates that were found but not corroborated. A different context
+  // match must not silently override them — the conflict goes to Needs placing.
+  let rejectedHeading: number[] = []
 
   // ── Step 2: Heading remap — every occurrence of the heading, text must be unique across their windows ──
   if (anchor.anchorHeading) {
@@ -156,7 +175,19 @@ export function resolveAnchor(
       const end = Math.min(content.length, h + anchor.anchorHeading.length + 500)
       for (const i of allIndexesOf(content, selectedText, h, end)) found.add(i)
     }
-    if (found.size === 1) return hit([...found][0], 'heading')
+    // On a changed script a lone in-window hit can still be the wrong copy of a repeated phrase (another copy may sit
+    // past the window): unless the phrase is unique in the whole script, the saved context must also agree there.
+    if (requireCorroboration) rejectedHeading = [...found]
+    if (found.size === 1) {
+      const at = [...found][0]
+      if (
+        !requireCorroboration ||
+        allIndexesOf(content, selectedText).length === 1 ||
+        offsetCorroborated(anchor, at, at + selectedText.length, content)
+      ) {
+        return hit(at, 'heading')
+      }
+    }
     for (const i of found) ambiguous.add(i)
   }
 
@@ -181,7 +212,23 @@ export function resolveAnchor(
         if (from >= 0 && content.slice(from, from + selectedText.length) === selectedText) candidates.add(from)
       }
     }
-    if (candidates.size === 1) return hit([...candidates][0], 'fuzzy')
+    // On a changed script a context match must still sit under the note's own scene heading (when that heading
+    // still exists), or a repeated phrase in another scene could be taken; conflicts go to Needs placing.
+    if (requireCorroboration && anchor.anchorHeading && content.includes(anchor.anchorHeading)) {
+      for (const c of [...candidates]) {
+        if (
+          anchorAnnotation({ from: c, to: c + selectedText.length } as Annotation, content).anchorHeading !==
+          anchor.anchorHeading
+        ) {
+          candidates.delete(c)
+        }
+      }
+    }
+    if (candidates.size === 1) {
+      const only = [...candidates][0]
+      if (rejectedHeading.length > 0 && !rejectedHeading.includes(only)) return orphan([...rejectedHeading, only])
+      return hit(only, 'fuzzy')
+    }
     for (const i of candidates) ambiguous.add(i)
   }
 

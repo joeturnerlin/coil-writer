@@ -1,4 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
+import type { Annotation } from '../editor/types'
 
 /**
  * Dexie database for auto-save.
@@ -234,6 +235,30 @@ export async function saveToDB(
         fileName,
         content,
         lastModified,
+        ...(fileKey ? { fileKey } : {}),
+      })
+    }
+  })
+}
+
+/**
+ * Make sure the document has a stored row (never overwrites an existing one). A reviewer who only reads and adds
+ * notes never edits, so autosave never wrote the row; without it a reopened file gets a new id and loses its notes.
+ */
+export async function ensureDocument(
+  documentId: string,
+  fileName: string,
+  content: string,
+  fileKey?: string | null,
+): Promise<void> {
+  await db.transaction('rw', db.documents, async () => {
+    const existing = await db.documents.where('documentId').equals(documentId).first()
+    if (!existing) {
+      await db.documents.add({
+        documentId,
+        fileName,
+        content,
+        lastModified: nextSaveStamp(),
         ...(fileKey ? { fileKey } : {}),
       })
     }
@@ -485,4 +510,42 @@ export async function getPendingDeltas(
 export async function clearPendingDeltas(fileName: string, documentId?: string): Promise<void> {
   if (documentId) await db.pendingDeltas.where('documentId').equals(documentId).delete()
   else await db.pendingDeltas.where('fileName').equals(fileName).delete()
+}
+
+// ── Notes ────────────────────────────────────────────────
+
+/** A note as stored: `placed` false = it still needs the user to place it ("Needs placing"). */
+export interface StoredNote {
+  placed: boolean
+  note: Annotation
+}
+
+/** Replace the stored notes of one document (rows are keyed by documentId). */
+export async function saveNotes(documentId: string, fileName: string, notes: StoredNote[]): Promise<void> {
+  await db.transaction('rw', db.annotations, async () => {
+    await db.annotations.where('documentId').equals(documentId).delete()
+    await db.annotations.bulkAdd(
+      notes.map((n) => ({
+        documentId,
+        fileName,
+        annotationId: n.note.id,
+        data: JSON.stringify(n),
+        createdAt: Date.parse(n.note.createdAt) || Date.now(),
+      })),
+    )
+  })
+}
+
+export async function loadNotes(documentId: string): Promise<StoredNote[]> {
+  const rows = await db.annotations.where('documentId').equals(documentId).toArray()
+  const out: StoredNote[] = []
+  for (const r of rows) {
+    try {
+      const parsed = JSON.parse(r.data) as StoredNote
+      if (parsed?.note?.id) out.push(parsed)
+    } catch {
+      // A row written by an older build (bare annotation JSON) is skipped rather than guessed at.
+    }
+  }
+  return out
 }
