@@ -269,3 +269,12 @@ describe('ScriptIndex: 120-page scale', () => {
     checkSlices(ix, src)
   })
 })
+
+it('time of day is found before a trailing qualifier', async () => {
+  const { buildScriptIndex } = await import('../src/lib/script-index')
+  const ix = buildScriptIndex('EXT. THE GROVE - NIGHT - HALLUCINATION\n\nAction.\n\nEXT. MOUNTAIN VISTA - LATE AFTERNOON - TRANSITION\n\nMore.\n')
+  expect(ix.scenes.map((s) => [s.location, s.timeOfDay])).toEqual([
+    ['THE GROVE', 'NIGHT'],
+    ['MOUNTAIN VISTA', 'AFTERNOON'],
+  ])
+})

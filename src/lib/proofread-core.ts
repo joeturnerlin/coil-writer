@@ -120,10 +120,13 @@ export function estimateRun(source: string): CostEstimate {
   const index = buildScriptIndex(source)
   const chunks = chunkScript(index, source)
   const per = estimateTokens(SYSTEM_PROMPT.length + factsBlock(index).length)
+  // Calibrated on a real run (The Hike, 43 pages, 2026-10-05): actual input was ~1.9x the character-count
+  // estimate (line numbers + tokenizer) and output averaged ~1,700 tokens per chunk. The old 300/chunk guess
+  // showed $0.15 for a run that cost $0.44.
   return {
     chunks: chunks.length,
-    inputTokens: chunks.reduce((n, c) => n + per + estimateTokens(c.text.length), 0),
-    outputTokens: chunks.length * 300,
+    inputTokens: Math.round(1.9 * chunks.reduce((n, c) => n + per + estimateTokens(c.text.length), 0)),
+    outputTokens: chunks.length * 1700,
   }
 }
 
