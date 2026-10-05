@@ -218,3 +218,17 @@ test('a changed script with a repeated phrase and edited context goes to Needs p
   const r = resolveAnchor(anchor, from, from + 3, 'No.', changed, true)
   expect(r.from === changed.indexOf('No.') && r.confidence === 'heading').toBe(false)
 })
+
+test('a context match in a different scene is not taken on a changed script', async () => {
+  const { resolveAnchor, anchorAnnotation } = await import('../src/lib/note-transfer')
+  const kitchen = 'INT. KITCHEN - DAY\n\nMARIA\nNo.\n\nShe turns away.\n\n'
+  const garage = `INT. GARAGE - NIGHT\n\n${'Oil on the floor. '.repeat(30)}\nMARIA\nNo.\n\nShe turns away.\n`
+  const original = kitchen + garage
+  const from = original.indexOf('No.')
+  const anchor = anchorAnnotation({ id: 'k', from, to: from + 3, selectedText: 'No.' } as never, original)
+  const changed = original.replace('She turns away.', 'She looks away.')
+  const r = resolveAnchor(anchor, from, from + 3, 'No.', changed, true)
+  expect(r.from > changed.indexOf('INT. GARAGE') && (r.confidence === 'fuzzy' || r.confidence === 'heading')).toBe(
+    false,
+  )
+})

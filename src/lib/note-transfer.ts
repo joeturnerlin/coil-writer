@@ -208,6 +208,18 @@ export function resolveAnchor(
         if (from >= 0 && content.slice(from, from + selectedText.length) === selectedText) candidates.add(from)
       }
     }
+    // On a changed script a context match must still sit under the note's own scene heading (when that heading
+    // still exists), or a repeated phrase in another scene could be taken; conflicts go to Needs placing.
+    if (requireCorroboration && anchor.anchorHeading && content.includes(anchor.anchorHeading)) {
+      for (const c of [...candidates]) {
+        if (
+          anchorAnnotation({ from: c, to: c + selectedText.length } as Annotation, content).anchorHeading !==
+          anchor.anchorHeading
+        ) {
+          candidates.delete(c)
+        }
+      }
+    }
     if (candidates.size === 1) return hit([...candidates][0], 'fuzzy')
     for (const i of candidates) ambiguous.add(i)
   }
