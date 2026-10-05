@@ -285,3 +285,15 @@ it('a place containing a time word is not read as the time (DAY ROOM)', async ()
   expect(ix.scenes[0].timeOfDay).toBe('UNKNOWN')
   expect(ix.scenes[0].location).toBe('HOSPITAL - DAY ROOM - FLASHBACK')
 })
+
+it('real time phrases before a qualifier are still read', async () => {
+  const { buildScriptIndex } = await import('../src/lib/script-index')
+  const ix = buildScriptIndex(
+    'INT. OFFICE - SAME TIME - FLASHBACK\n\nA.\n\nINT. OFFICE - A FEW HOURS LATER - FLASHBACK\n\nB.\n\nINT. OFFICE - 2 HOURS LATER - DREAM\n\nC.\n',
+  )
+  expect(ix.scenes.map((x) => [x.location, x.timeOfDay])).toEqual([
+    ['OFFICE', 'SAME'],
+    ['OFFICE', 'LATER'],
+    ['OFFICE', 'LATER'],
+  ])
+})

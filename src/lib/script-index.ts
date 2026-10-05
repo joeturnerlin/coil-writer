@@ -151,10 +151,39 @@ const TIME_MODIFIERS = new Set([
   'THAT',
   'SAME',
   'MOMENTS',
+  'MOMENT',
   'A',
+  'AN',
   'FEW',
+  'SEVERAL',
+  'TIME',
+  'SECONDS',
+  'MINUTE',
+  'MINUTES',
+  'HOUR',
+  'HOURS',
   'DAYS',
+  'WEEK',
+  'WEEKS',
+  'MONTH',
+  'MONTHS',
+  'YEAR',
   'YEARS',
+  'ONE',
+  'TWO',
+  'THREE',
+  'FOUR',
+  'FIVE',
+  'SIX',
+  'SEVEN',
+  'EIGHT',
+  'NINE',
+  'TEN',
+  'TWELVE',
+  'HALF',
+  'AN',
+  'BEFORE',
+  'AFTER',
 ])
 
 /** True only when the whole segment is a time phrase ("LATE AFTERNOON"), not a place that contains a time word ("DAY ROOM"). */
@@ -163,7 +192,9 @@ function isTimeExpression(token: string): boolean {
     .toUpperCase()
     .split(/[\s/,()]+/)
     .filter(Boolean)
-  return words.some((w) => TIME_WORDS[w]) && words.every((w) => TIME_WORDS[w] || TIME_MODIFIERS.has(w))
+  return (
+    words.some((w) => TIME_WORDS[w]) && words.every((w) => TIME_WORDS[w] || TIME_MODIFIERS.has(w) || /^\d+$/.test(w))
+  )
 }
 
 function parseTime(token: string): TimeOfDay {
